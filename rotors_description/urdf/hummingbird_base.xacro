@@ -35,6 +35,67 @@
   <!-- Mount an ADIS16448 IMU. -->
   <xacro:default_imu namespace="${namespace}" parent_link="${namespace}/base_link" />
 
+  <!-- Mount an pressure sensor -->
+  <!-- <xacro:default_pressure_sensor namespace="{namespace}" parent_link="${namespace}/base_link" /> -->
+
+
+  <xacro:pressure_sensor_plugin_macro
+    namespace="${namespace}"
+    pressure_sensor_suffix=""
+    parent_link="${namespace}/base_link"
+    pressure_topic="air_pressure"
+    mass_pressure_sensor="0.015"
+    reference_altitude="500.0"
+    pressure_variance="0.0">
+    <inertia ixx="0.00001" ixy="0.0" ixz="0.0" iyy="0.00001" iyz="0.0" izz="0.00001" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+  </xacro:pressure_sensor_plugin_macro>
+
+
+  <!-- Mount an magnetometer  -->
+   <!--ref_mag_north="33280.2"
+   ref_mag_east="-3416.8"
+   ref_mag_down="35346.5"-->
+  <xacro:magnetometer_plugin_macro 
+   namespace="${namespace}"
+   magnetometer_suffix=""
+   parent_link="${namespace}/base_link"
+   magnetometer_topic="magnetometer"
+   mass_magnetometer_sensor="0.004"
+   ref_mag_north="0.0000332802"
+   ref_mag_east="-0.0000034168"
+   ref_mag_down="0.0000353465"
+   noise_normal="0.0000002 0.0000002 0.0000002"
+   noise_uniform_initial_bias="0.0000002 0.0000002 0.0000002">
+    <inertia ixx="0.00001" ixy="0.0" ixz="0.0" iyy="0.00001" iyz="0.0" izz="0.00001" />
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    />
+  </xacro:magnetometer_plugin_macro>
+
+
+  <!-- Mount a gps. -->
+  <xacro:default_gps namespace="${namespace}" parent_link="${namespace}/base_link" />
+
+  <!-- camera_macro -->
+  <xacro:camera_macro
+      namespace="${namespace}"
+      parent_link="${namespace}/base_link"
+      camera_suffix="nadir"
+      frame_rate="20.0"
+      horizontal_fov="2"
+      image_width="640"
+      image_height="480"
+      image_format="L8"
+      min_distance="0.02"
+      max_distance="50"
+      noise_mean="0.0"
+      noise_stddev="0.007"
+      enable_visual="true">
+
+        <box size="0.05 0.05 0.02" />
+        <origin xyz="0 0 ${-arm_length/4}" rpy="0 ${pi/2} 0" />
+</xacro:camera_macro>
+
   <xacro:if value="$(arg enable_ground_truth)">
     <xacro:ground_truth_imu_and_odometry namespace="${namespace}" parent_link="${namespace}/base_link" />
   </xacro:if>

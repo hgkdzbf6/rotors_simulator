@@ -1,0 +1,6 @@
+reference_altitude: 500
+reference_heading: 0.0
+reference_latitude: 47.3666
+reference_longitude: 8.5499
+image_position_stddev: 1.0
+image_velocity_stddev: 1.0

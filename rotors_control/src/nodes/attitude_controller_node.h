@@ -18,8 +18,8 @@
  * limitations under the License.
  */
 
-#ifndef ROTORS_CONTROL_LEE_POSITION_CONTROLLER_NODE_H
-#define ROTORS_CONTROL_LEE_POSITION_CONTROLLER_NODE_H
+#ifndef ROTORS_CONTROL_ATTITUDE_CONTROLLER_NODE_H
+#define ROTORS_CONTROL_ATTITUDE_CONTROLLER_NODE_H
 
 #include <boost/bind.hpp>
 #include <Eigen/Eigen>
@@ -30,27 +30,26 @@
 #include <mav_msgs/AttitudeThrust.h>
 #include <mav_msgs/eigen_mav_msgs.h>
 #include <nav_msgs/Odometry.h>
-#include <std_srvs/Trigger.h>
 #include <ros/callback_queue.h>
 #include <ros/ros.h>
 #include <trajectory_msgs/MultiDOFJointTrajectory.h>
 
+#include "../../include/rotors_control/original_attitude_controller.h"
 #include "rotors_control/common.h"
-#include "rotors_control/lee_position_controller.h"
 
 namespace rotors_control {
 
-class LeePositionControllerNode {
+class AttitudeControllerNode {
  public:
-  LeePositionControllerNode();
-  ~LeePositionControllerNode();
+  AttitudeControllerNode();
+  ~AttitudeControllerNode();
 
   void InitializeParams();
   void Publish();
 
  private:
 
-  LeePositionController lee_position_controller_;
+  AttitudeController attitude_controller_;
 
   std::string namespace_;
 
@@ -59,25 +58,15 @@ class LeePositionControllerNode {
   ros::Subscriber cmd_multi_dof_joint_trajectory_sub_;
   ros::Subscriber cmd_pose_sub_;
   ros::Subscriber odometry_sub_;
-  ros::ServiceClient svo_control_client_;
-  ros::ServiceServer taking_off_server_;
 
   ros::Publisher motor_velocity_reference_pub_;
 
   mav_msgs::EigenTrajectoryPointDeque commands_;
   std::deque<ros::Duration> command_waiting_times_;
-
-  double take_off_height_;
-  EigenOdometry odometry_;
   ros::Timer command_timer_;
-  ros::Timer timer_;
 
-
-  bool TakingoffCallback(
-  		std_srvs::Trigger::Request &req,
-  		std_srvs::Trigger::Response &res);
+  void update(const ros::Time &time, const ros::Duration &period);
   void TimedCommandCallback(const ros::TimerEvent& e);
-  void TimerCallback(const ros::TimerEvent& e);
 
   void MultiDofJointTrajectoryCallback(
       const trajectory_msgs::MultiDOFJointTrajectoryConstPtr& trajectory_reference_msg);
@@ -89,4 +78,4 @@ class LeePositionControllerNode {
 };
 }
 
-#endif // ROTORS_CONTROL_LEE_POSITION_CONTROLLER_NODE_H
+#endif // ROTORS_CONTROL_ATTITUDE_CONTROLLER_NODE_H

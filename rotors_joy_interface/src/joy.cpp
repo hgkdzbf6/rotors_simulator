@@ -37,9 +37,9 @@ Joy::Joy() {
   control_msg_.thrust.z = 0;
   current_yaw_vel_ = 0;
 
-  pnh.param("axis_roll_", axes_.roll, 0);
-  pnh.param("axis_pitch_", axes_.pitch, 1);
-  pnh.param("axis_thrust_", axes_.thrust, 2);
+  pnh.param("axis_roll_", axes_.roll, 3);
+  pnh.param("axis_pitch_", axes_.pitch, 4);
+  pnh.param("axis_thrust_", axes_.thrust, 1);
 
   pnh.param("axis_direction_roll", axes_.roll_direction, -1);
   pnh.param("axis_direction_pitch", axes_.pitch_direction, 1);
@@ -55,12 +55,12 @@ Joy::Joy() {
 
   pnh.param("is_fixed_wing", is_fixed_wing_, false);
 
-  pnh.param("button_yaw_left_", buttons_.yaw_left, 3);
-  pnh.param("button_yaw_right_", buttons_.yaw_right, 4);
-  pnh.param("button_ctrl_enable_", buttons_.ctrl_enable, 5);
-  pnh.param("button_ctrl_mode_", buttons_.ctrl_mode, 10);
-  pnh.param("button_takeoff_", buttons_.takeoff, 7);
-  pnh.param("button_land_", buttons_.land, 8);
+  pnh.param("button_yaw_left_", buttons_.yaw_left, 4);
+  pnh.param("button_yaw_right_", buttons_.yaw_right, 5);
+  pnh.param("button_ctrl_enable_", buttons_.ctrl_enable, 3);
+  pnh.param("button_ctrl_mode_", buttons_.ctrl_mode, 1);
+  pnh.param("button_takeoff_", buttons_.takeoff, 2);
+  pnh.param("button_land_", buttons_.land, 0);
 
   namespace_ = nh_.getNamespace();
   joy_sub_ = nh_.subscribe("joy", 10, &Joy::JoyCallback, this);
@@ -96,7 +96,7 @@ void Joy::JoyCallback(const sensor_msgs::JoyConstPtr& msg) {
     control_msg_.thrust.x = (thrust >= 0.0) ? thrust : 0.0;
   }
   else {
-    control_msg_.thrust.z = (msg->axes[axes_.thrust] + 1) * max_.thrust / 2.0 * axes_.thrust_direction;
+    control_msg_.thrust.z = (msg->axes[axes_.thrust] + 1) * max_.thrust / 4.0 * axes_.thrust_direction;
   }
 
   ros::Time update_time = ros::Time::now();

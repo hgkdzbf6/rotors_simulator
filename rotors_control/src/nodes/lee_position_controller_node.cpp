@@ -28,9 +28,8 @@
 namespace rotors_control {
 
 LeePositionControllerNode::LeePositionControllerNode() {
-  InitializeParams();
-
   ros::NodeHandle nh;
+  InitializeParams();
 
   cmd_pose_sub_ = nh.subscribe(
       mav_msgs::default_topics::COMMAND_POSE, 1,
@@ -43,14 +42,30 @@ LeePositionControllerNode::LeePositionControllerNode() {
   odometry_sub_ = nh.subscribe(mav_msgs::default_topics::ODOMETRY, 1,
                                &LeePositionControllerNode::OdometryCallback, this);
 
+  taking_off_server_ = nh.advertiseService("taking_off",
+		  &LeePositionControllerNode::TakingoffCallback,this);
+
+  svo_control_client_ = nh.serviceClient<std_srvs::Trigger>("svo_control");
+
   motor_velocity_reference_pub_ = nh.advertise<mav_msgs::Actuators>(
       mav_msgs::default_topics::COMMAND_ACTUATORS, 1);
 
   command_timer_ = nh.createTimer(ros::Duration(0), &LeePositionControllerNode::TimedCommandCallback, this,
                                   true, false);
+
+  timer_=nh.createTimer(ros::Duration(0.01),&LeePositionControllerNode::TimerCallback,this);
 }
 
 LeePositionControllerNode::~LeePositionControllerNode() { }
+
+bool LeePositionControllerNode::TakingoffCallback(
+		std_srvs::Trigger::Request &req,
+		std_srvs::Trigger::Response &res){
+	lee_position_controller_.SetTakingoff(true);
+	res.message="take off success";
+	res.success=true;
+	return true;
+}
 
 void LeePositionControllerNode::InitializeParams() {
   ros::NodeHandle pnh("~");
@@ -92,6 +107,9 @@ void LeePositionControllerNode::InitializeParams() {
   GetRosParameter(pnh, "angular_rate_gain/z",
                   lee_position_controller_.controller_parameters_.angular_rate_gain_.z(),
                   &lee_position_controller_.controller_parameters_.angular_rate_gain_.z());
+
+  pnh.param<double >("take_off_height", take_off_height_, 2);
+
   GetVehicleParameters(pnh, &lee_position_controller_.vehicle_parameters_);
   lee_position_controller_.InitializeParameters();
 }
@@ -151,6 +169,23 @@ void LeePositionControllerNode::MultiDofJointTrajectoryCallback(
     command_timer_.start();
   }
 }
+void LeePositionControllerNode::TimerCallback(const ros::TimerEvent & e){
+
+  if(lee_position_controller_.GetTakingoff() && odometry_.position(2)>take_off_height_ ){
+	  //first stop take off behavior
+	  lee_position_controller_.SetTakingoff(false);
+	  ROS_INFO("take off finished!");
+	  //next send to svo to restart the position calculation.
+	  std_srvs::Trigger srv;
+	  if(svo_control_client_.call(srv)){
+		ROS_INFO("message: %s",srv.response.message.c_str());
+	  }else{
+		ROS_ERROR("Failed to call service add_two_ints");
+	  }
+  }else{
+	// ROS_INFO("%lf", odometry_.position(2));
+  }
+}
 
 void LeePositionControllerNode::TimedCommandCallback(const ros::TimerEvent& e) {
 
@@ -178,6 +213,8 @@ void LeePositionControllerNode::OdometryCallback(const nav_msgs::OdometryConstPt
   eigenOdometryFromMsg(odometry_msg, &odometry);
   lee_position_controller_.SetOdometry(odometry);
 
+  odometry_=odometry;
+
   Eigen::VectorXd ref_rotor_velocities;
   lee_position_controller_.CalculateRotorVelocities(&ref_rotor_velocities);
 
@@ -198,7 +235,6 @@ int main(int argc, char** argv) {
   ros::init(argc, argv, "lee_position_controller_node");
 
   rotors_control::LeePositionControllerNode lee_position_controller_node;
-
   ros::spin();
 
   return 0;

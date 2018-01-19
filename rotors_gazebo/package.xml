@@ -26,6 +26,7 @@
   <build_depend>gazebo_msgs</build_depend>
   <build_depend>geometry_msgs</build_depend>
   <build_depend>roscpp</build_depend>
+  <build_depend>tf</build_depend>
   <build_depend>sensor_msgs</build_depend>
 
   <!-- Dependencies needed after this package is compiled. -->
@@ -33,6 +34,7 @@
   <run_depend>rotors_gazebo_plugins</run_depend>
   <run_depend>mav_msgs</run_depend>
   <run_depend>gazebo_msgs</run_depend>
+  <run_depend>tf</run_depend>
   <run_depend>geometry_msgs</run_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>sensor_msgs</run_depend>

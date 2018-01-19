@@ -18,20 +18,19 @@
  * limitations under the License.
  */
 
-#include "rotors_control/lee_position_controller.h"
+#include "rotors_control/attitude_controller.h"
 
 namespace rotors_control {
 
-LeePositionController::LeePositionController()
+AttitudeController::AttitudeController()
     : initialized_params_(false),
       controller_active_(false) {
   InitializeParameters();
 }
 
-LeePositionController::~LeePositionController() {}
+AttitudeController::~AttitudeController() {}
 
-void LeePositionController::InitializeParameters() {
-
+void AttitudeController::InitializeParameters() {
   calculateAllocationMatrix(vehicle_parameters_.rotor_configuration_, &(controller_parameters_.allocation_matrix_));
   // To make the tuning independent of the inertia matrix we divide here.
   normalized_attitude_gain_ = controller_parameters_.attitude_gain_.transpose()
@@ -53,7 +52,7 @@ void LeePositionController::InitializeParameters() {
   initialized_params_ = true;
 }
 
-void LeePositionController::CalculateRotorVelocities(Eigen::VectorXd* rotor_velocities)  {
+void AttitudeController::CalculateRotorVelocities(Eigen::VectorXd* rotor_velocities) const {
   assert(rotor_velocities);
   assert(initialized_params_);
 
@@ -65,22 +64,13 @@ void LeePositionController::CalculateRotorVelocities(Eigen::VectorXd* rotor_velo
   }
 
   Eigen::Vector3d acceleration;
-
-  if(taking_off_){
-	  acceleration=Eigen::Vector3d(0,0,-15.9);
-  }else{
-    ComputeDesiredAcceleration(&acceleration);
-  }
+  ComputeDesiredAcceleration(&acceleration);
 
   Eigen::Vector3d angular_acceleration;
   ComputeDesiredAngularAcc(acceleration, &angular_acceleration);
 
   // Project thrust onto body z axis.
   double thrust = -vehicle_parameters_.mass_ * acceleration.dot(odometry_.orientation.toRotationMatrix().col(2));
-
-  if(taking_off_){
-	  thrust=9;
-  }
 
   Eigen::Vector4d angular_acceleration_thrust;
   angular_acceleration_thrust.block<3, 1>(0, 0) = angular_acceleration;
@@ -91,29 +81,17 @@ void LeePositionController::CalculateRotorVelocities(Eigen::VectorXd* rotor_velo
   *rotor_velocities = rotor_velocities->cwiseSqrt();
 }
 
-void LeePositionController::SetEnable(bool val){
-	controller_active_=val;
-  // ROS_INFO("enabled..");
-}
-bool LeePositionController::GetTakingoff(){
-	return taking_off_;
-}
-void LeePositionController::SetTakingoff(bool val){
-	taking_off_=val;
-	SetEnable(true);
-  // ROS_INFO("take off set.");
-}
-
-void LeePositionController::SetOdometry(const EigenOdometry& odometry) {
+void AttitudeController::SetOdometry(const EigenOdometry& odometry) {
   odometry_ = odometry;
 }
 
-void LeePositionController::SetTrajectoryPoint(
+void AttitudeController::SetTrajectoryPoint(
     const mav_msgs::EigenTrajectoryPoint& command_trajectory) {
   command_trajectory_ = command_trajectory;
+  controller_active_ = true;
 }
 
-void LeePositionController::ComputeDesiredAcceleration(Eigen::Vector3d* acceleration) const {
+void AttitudeController::ComputeDesiredAcceleration(Eigen::Vector3d* acceleration) const {
   assert(acceleration);
 
   Eigen::Vector3d position_error;
@@ -134,7 +112,7 @@ void LeePositionController::ComputeDesiredAcceleration(Eigen::Vector3d* accelera
 
 // Implementation from the T. Lee et al. paper
 // Control of complex maneuvers for a quadrotor UAV using geometric methods on SE(3)
-void LeePositionController::ComputeDesiredAngularAcc(const Eigen::Vector3d& acceleration,
+void AttitudeController::ComputeDesiredAngularAcc(const Eigen::Vector3d& acceleration,
                                                      Eigen::Vector3d* angular_acceleration) const {
   assert(angular_acceleration);
 
@@ -179,7 +157,7 @@ void LeePositionController::ComputeDesiredAngularAcc(const Eigen::Vector3d& acce
   *angular_acceleration = -1 * angle_error.cwiseProduct(normalized_attitude_gain_)
                            - angular_rate_error.cwiseProduct(normalized_angular_rate_gain_)
                            + odometry_.angular_velocity.cross(J * odometry_.angular_velocity)
-                           - J*(skew_angular*R.transpose()*R_des*angular_rate_des
-                           - R.transpose()*R_des*angular_acc_des); // we don't need the inertia matrix here
+						   - J*(skew_angular*R.transpose()*R_des*angular_rate_des
+						   - R.transpose()*R_des*angular_acc_des); // we don't need the inertia matrix here
 }
 }

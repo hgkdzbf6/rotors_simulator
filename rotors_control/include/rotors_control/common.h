@@ -116,6 +116,16 @@ inline void skewMatrixFromVector(Eigen::Vector3d& vector, Eigen::Matrix3d* skew_
 inline void vectorFromSkewMatrix(Eigen::Matrix3d& skew_matrix, Eigen::Vector3d* vector) {
   *vector << skew_matrix(2, 1), skew_matrix(0,2), skew_matrix(1, 0);
 }
+
+inline void cskewMatrixFromVector(const Eigen::Vector3d& vector, Eigen::Matrix3d* skew_matrix) {
+  *skew_matrix << 0, -vector.z(), vector.y(),
+                  vector.z(), 0, -vector.x(),
+                  -vector.y(), vector.x(), 0;
+}
+
+inline void cvectorFromSkewMatrix(const Eigen::Matrix3d& skew_matrix, Eigen::Vector3d* vector) {
+  *vector << skew_matrix(2, 1), skew_matrix(0,2), skew_matrix(1, 0);
+}
 }
 
 #endif /* INCLUDE_ROTORS_CONTROL_COMMON_H_ */
