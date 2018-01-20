@@ -17,7 +17,6 @@ Transformation::Transformation():base_twist_(){
   pnh.param<std::string>("odometry_sub_frame",odometry_sub_frame_,"odometry_sensor1/odometry");
   pnh.param<std::string>("estimate_pose_frame",estimate_pose_frame_,"estimate_pose");
 
-
   pnh.param<std::string>("image_sub_frame",image_sub_frame_,"image_sub_frame");
   pnh.param<std::string>("image_pub_frame",image_pub_frame_,"image_pub_frame");
 
