@@ -81,7 +81,7 @@
     <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
   </group>
 
-  <node pkg="rosbag" type="record"  name="record"  args="-o /home/zbf/Desktop/haha.bag hummingbird/svo/pose hummingbird/svo/fusion_pose hummingbird/odometry_pub_frame  hummingbird/odometry_sensor1/odometry" output="screen"/>
+  <node pkg="rosbag" type="record"  name="record"  args="-o /home/zbf/Desktop/haha.bag /clock hummingbird/svo/pose hummingbird/svo/fusion_pose hummingbird/odometry_pub_frame  hummingbird/odometry_sensor1/odometry" output="screen"/>
 
 
 </launch>
