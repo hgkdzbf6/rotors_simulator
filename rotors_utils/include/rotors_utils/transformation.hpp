@@ -17,6 +17,7 @@
 #include <hector_uav_msgs/Altimeter.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/TwistStamped.h>
+#include <std_srvs/Trigger.h>
 
 #ifdef USE_SVO
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
