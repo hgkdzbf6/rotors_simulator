@@ -61,17 +61,20 @@ class LeePositionControllerNode {
   ros::Subscriber odometry_sub_;
   ros::ServiceClient svo_control_client_;
   ros::ServiceServer taking_off_server_;
+  ros::Subscriber leader_position_sub_;
+  ros::Subscriber leader_desired_position_sub_;
 
   ros::Publisher motor_velocity_reference_pub_;
 
   mav_msgs::EigenTrajectoryPointDeque commands_;
   std::deque<ros::Duration> command_waiting_times_;
 
+  bool start_formation_control_;
+
   double take_off_height_;
   EigenOdometry odometry_;
   ros::Timer command_timer_;
   ros::Timer timer_;
-
 
   bool TakingoffCallback(
   		std_srvs::Trigger::Request &req,
@@ -82,6 +85,8 @@ class LeePositionControllerNode {
   void MultiDofJointTrajectoryCallback(
       const trajectory_msgs::MultiDOFJointTrajectoryConstPtr& trajectory_reference_msg);
 
+  void LeaderPositionCallback(const geometry_msgs::PoseStampedConstPtr& msg);
+  void LeaderDesiredPositionCallback(const geometry_msgs::PoseStampedConstPtr& msg);
   void CommandPoseCallback(
       const geometry_msgs::PoseStampedConstPtr& pose_msg);
 

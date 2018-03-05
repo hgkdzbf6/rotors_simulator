@@ -27,7 +27,7 @@
 
 namespace rotors_control {
 
-LeePositionControllerNode::LeePositionControllerNode() {
+LeePositionControllerNode::LeePositionControllerNode(): start_formation_control_(false) {
   ros::NodeHandle nh;
   InitializeParams();
 
@@ -42,9 +42,17 @@ LeePositionControllerNode::LeePositionControllerNode() {
   odometry_sub_ = nh.subscribe(mav_msgs::default_topics::ODOMETRY, 1,
                                &LeePositionControllerNode::OdometryCallback, this);
 
+  // 这里把leader的位置映射成odometry, 除了还要引入什么
+  // 在leader坐标系下的follower位置
+  leader_position_sub_ = nh.subscribe("/hummingbird0/relative_position01",1,&LeePositionControllerNode::LeaderPositionCallback,this );
+  // 在leader坐标系下的follower的desired位置
+  leader_desired_position_sub_ =nh.subscribe("leader_desired_position",1,&LeePositionControllerNode::LeaderDesiredPositionCallback,this);
+  
+  // 起飞服务
   taking_off_server_ = nh.advertiseService("taking_off",
 		  &LeePositionControllerNode::TakingoffCallback,this);
 
+  // svo控制
   svo_control_client_ = nh.serviceClient<std_srvs::Trigger>("svo_control");
 
   motor_velocity_reference_pub_ = nh.advertise<mav_msgs::Actuators>(
@@ -89,6 +97,26 @@ void LeePositionControllerNode::InitializeParams() {
   GetRosParameter(pnh, "velocity_gain/z",
                   lee_position_controller_.controller_parameters_.velocity_gain_.z(),
                   &lee_position_controller_.controller_parameters_.velocity_gain_.z());
+
+  GetRosParameter(pnh, "leader_position_gain/x",
+                  lee_position_controller_.controller_parameters_.leader_position_gain_.x(),
+                  &lee_position_controller_.controller_parameters_.leader_position_gain_.x());
+  GetRosParameter(pnh, "leader_position_gain/y",
+                  lee_position_controller_.controller_parameters_.leader_position_gain_.y(),
+                  &lee_position_controller_.controller_parameters_.leader_position_gain_.y());
+  GetRosParameter(pnh, "leader_position_gain/z",
+                  lee_position_controller_.controller_parameters_.leader_position_gain_.z(),
+                  &lee_position_controller_.controller_parameters_.leader_position_gain_.z());
+  GetRosParameter(pnh, "leader_velocity_gain/x",
+                  lee_position_controller_.controller_parameters_.leader_velocity_gain_.x(),
+                  &lee_position_controller_.controller_parameters_.leader_velocity_gain_.x());
+  GetRosParameter(pnh, "leader_velocity_gain/y",
+                  lee_position_controller_.controller_parameters_.leader_velocity_gain_.y(),
+                  &lee_position_controller_.controller_parameters_.leader_velocity_gain_.y());
+  GetRosParameter(pnh, "leader_velocity_gain/z",
+                  lee_position_controller_.controller_parameters_.leader_velocity_gain_.z(),
+                  &lee_position_controller_.controller_parameters_.leader_velocity_gain_.z());
+
   GetRosParameter(pnh, "attitude_gain/x",
                   lee_position_controller_.controller_parameters_.attitude_gain_.x(),
                   &lee_position_controller_.controller_parameters_.attitude_gain_.x());
@@ -203,6 +231,45 @@ void LeePositionControllerNode::TimedCommandCallback(const ros::TimerEvent& e) {
     command_waiting_times_.pop_front();
     command_timer_.start();
   }
+}
+
+void LeePositionControllerNode::LeaderDesiredPositionCallback(const geometry_msgs::PoseStampedConstPtr& msg) {
+
+  ROS_INFO_ONCE("Leader Desired Position Controller got first leader position message.");
+  lee_position_controller_.start_formation_control_=true;
+  static EigenOdometry odometry;
+
+  float dt=0.1f;
+  odometry.velocity(0)=(msg->pose.position.x-odometry.position(0))/dt;
+  odometry.velocity(1)=(msg->pose.position.y-odometry.position(1))/dt;
+  odometry.velocity(2)=(msg->pose.position.z-odometry.position(2))/dt;
+  odometry.position(0)=msg->pose.position.x;
+  odometry.position(1)=msg->pose.position.y;
+  odometry.position(2)=msg->pose.position.z;
+  odometry.orientation=Eigen::Quaterniond(msg->pose.orientation.w,
+    msg->pose.orientation.x,msg->pose.orientation.y,msg->pose.orientation.z);
+
+  // ROS_INFO_STREAM("desired position: "<<odometry.position);
+  lee_position_controller_.SetLeaderDesiredOdometry(odometry);
+}
+
+void LeePositionControllerNode::LeaderPositionCallback(const geometry_msgs::PoseStampedConstPtr& msg) {
+
+  ROS_INFO_ONCE("Leader Position Controller got first leader position message.");
+  static EigenOdometry odometry;
+
+  float dt=0.1f;
+  odometry.velocity(0)=(msg->pose.position.x-odometry.position(0))/dt;
+  odometry.velocity(1)=(msg->pose.position.y-odometry.position(1))/dt;
+  odometry.velocity(2)=(msg->pose.position.z-odometry.position(2))/dt;
+  odometry.position(0)=msg->pose.position.x;
+  odometry.position(1)=msg->pose.position.y;
+  odometry.position(2)=msg->pose.position.z;
+  odometry.orientation=Eigen::Quaterniond(msg->pose.orientation.w,
+    msg->pose.orientation.x,msg->pose.orientation.y,msg->pose.orientation.z);
+
+  // ROS_INFO_STREAM("position:"<<odometry.position);
+  lee_position_controller_.SetLeaderOdometry(odometry);
 }
 
 void LeePositionControllerNode::OdometryCallback(const nav_msgs::OdometryConstPtr& odometry_msg) {

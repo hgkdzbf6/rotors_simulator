@@ -1,10 +1,10 @@
 <!-- this is for svo -->
 <launch>
-  <arg name="mav_name" default="hummingbird1"/>
-  <arg name="mav_name2" default="hummingbird2"/>
-  <arg name="mav_name3" default="hummingbird3"/>
+  <arg name="mav_index1" default="0"/>
+  <arg name="mav_index2" default="1"/>
+  <arg name="mav_index3" default="2"/>
   <arg name="world_name" default="map3_world"/>
-  <arg name="log_file" default="$(arg mav_name)" />
+  <!-- <arg name="log_file" default="$(arg mav_name)" />-->
   <arg name="debug" default="false"/>
   <arg name="gui" default="true"/>
   <arg name="paused" default="false"/>
@@ -27,17 +27,19 @@
   <!--<node pkg="rotors_joy_interface" type="rotors_joy_interface" name="joy" output="screen"/>-->
 
   <include file="$(find rotors_gazebo)/launch/test_single_svo.launch">
-    <arg name="mav_name" value="$(arg mav_name)" />
-    <arg name="x" value="-1.5"/>
-    <arg name="y" value="-1.5"/>
+    <arg name="index" value="$(arg mav_index1)" />
+    <arg name="x" value="-1.2"/>
+    <arg name="y" value="-1.2"/>
     <arg name="z" value="0.1"/>
+    <arg name="is_leader" value="true" />
   </include>
 
   <include file="$(find rotors_gazebo)/launch/test_single_svo.launch">
-    <arg name="mav_name" value="$(arg mav_name2)" />
-    <arg name="x" value="1.5"/>
-    <arg name="y" value="1.5"/>
+    <arg name="index" value="$(arg mav_index2)" />
+    <arg name="x" value="1.2"/>
+    <arg name="y" value="1.2"/>
     <arg name="z" value="0.1"/>
+    <arg name="is_leader" value="false" />
   </include>
   <!-- <include file="$(find rotors_gazebo)/launch/test_single_svo.launch">
     <arg name="mav_name" value="$(arg mav_name3)" />

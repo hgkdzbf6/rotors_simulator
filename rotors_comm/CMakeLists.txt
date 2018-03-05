@@ -8,6 +8,7 @@ add_service_files(
   FILES
   Octomap.srv
   RecordRosbag.srv
+  SuccessiveControl.srv
 )
 
 add_message_files(

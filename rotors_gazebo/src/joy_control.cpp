@@ -30,6 +30,9 @@
 #include <trajectory_msgs/MultiDOFJointTrajectory.h>
 #include <tf/tf.h>
 
+/**
+* 功能: 把joy产生的位置信息变成轨迹信息,供飞机下一个时刻使用.
+*/
 class JoyControl{
   private:
     ros::NodeHandle nh_;  
