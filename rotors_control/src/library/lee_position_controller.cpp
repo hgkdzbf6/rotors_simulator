@@ -125,18 +125,29 @@ void LeePositionController::SetLeaderDesiredOdometry(const EigenOdometry& odomet
 
 void LeePositionController::ComputeDesiredAcceleration(Eigen::Vector3d* acceleration)  {
   assert(acceleration);
-  static Eigen::Vector3d position_error_accumulate;
-  Eigen::Vector3d position_error;
-  position_error = odometry_.position - command_trajectory_.position_W - position_error_accumulate;
 
+  Eigen::Vector3d e_3(Eigen::Vector3d::UnitZ());
   // 需要哪些信息?
   // 位置信息,期望位置信息
   // 速度信息,期望速度信息
   // leader的旋转矩阵
+  // float theta = atan2(leader_odometry_.position(1),leader_odometry_.position(0));
   Eigen::Vector3d leader_position_error;
-  Eigen::Vector3d leader_position_value;
-  leader_position_error = leader_odometry_.position - leader_desired_odometry_.position;
-  leader_position_value = leader_position_error.cwiseProduct(controller_parameters_.leader_position_gain_);
+  leader_position_error = command_trajectory_.position_W ;
+  if(start_formation_control_ && new_data_approach_){
+    // leader_position_error+=leader_desired_odometry_.position+odometry_.position-leader_odometry_.position-3*e_3;
+    // ROS_INFO_STREAM("leader_position_error:"<<leader_position_error);
+  }
+
+  // static Eigen::Vector3d position_error_accumulate;
+  Eigen::Vector3d position_error;
+  // position_error = odometry_.position - command_trajectory_.position_W - position_error_accumulate;
+  // position_error = odometry_.position - command_trajectory_.position_W;
+  position_error = odometry_.position - leader_position_error;
+
+  if(start_formation_control_ && new_data_approach_){
+    // ROS_INFO_STREAM("position_error:"<<position_error);
+  }
 
   // Transform velocity to world frame.
   const Eigen::Matrix3d R_W_I = odometry_.orientation.toRotationMatrix();
@@ -146,10 +157,10 @@ void LeePositionController::ComputeDesiredAcceleration(Eigen::Vector3d* accelera
 
   // 计算leader的速度误差
   // 这里和上面不一样,因为这里速度和速度的设定值全部是在leader坐标系下的
-  Eigen::Vector3d leader_velocity_error;
-  Eigen::Vector3d leader_velocity_value;
-  leader_velocity_error = leader_odometry_.velocity - leader_desired_odometry_.velocity;
-  leader_velocity_value = leader_velocity_error.cwiseProduct(controller_parameters_.leader_velocity_gain_);
+  // Eigen::Vector3d leader_velocity_error;
+  // Eigen::Vector3d leader_velocity_value;
+  // leader_velocity_error = leader_odometry_.velocity - leader_desired_odometry_.velocity;
+  // leader_velocity_value = leader_velocity_error.cwiseProduct(controller_parameters_.leader_velocity_gain_);
 
   // if(leader_position_value(0)>3)leader_position_value(0)=3;
   // if(leader_position_value(0)<-3)leader_position_value(0)=-3;
@@ -168,16 +179,15 @@ void LeePositionController::ComputeDesiredAcceleration(Eigen::Vector3d* accelera
   // ROS_INFO_STREAM("leader_position_error: "<< leader_position_error.transpose());
   // ROS_INFO_STREAM("leader_velocity_error: "<< leader_velocity_error.transpose());
 
-  Eigen::Vector3d e_3(Eigen::Vector3d::UnitZ());
 
   if(start_formation_control_ && new_data_approach_){
 
     if(new_data_approach_){
       *acceleration = 
-          ( //position_error.cwiseProduct(controller_parameters_.position_gain_)
-          //+ velocity_error.cwiseProduct(controller_parameters_.velocity_gain_)+
-          leader_position_value
-          + leader_velocity_value
+          ( position_error.cwiseProduct(controller_parameters_.position_gain_)
+          + velocity_error.cwiseProduct(controller_parameters_.velocity_gain_)
+          // leader_position_value
+          // + leader_velocity_value
           ) / vehicle_parameters_.mass_
           - vehicle_parameters_.gravity_ * e_3 - command_trajectory_.acceleration_W;
       // *acceleration = 
@@ -188,10 +198,7 @@ void LeePositionController::ComputeDesiredAcceleration(Eigen::Vector3d* accelera
       //     ) / vehicle_parameters_.mass_
       //     - vehicle_parameters_.gravity_ * e_3 - command_trajectory_.acceleration_W;
 
-      ROS_INFO_STREAM("leader_position_value: "<< leader_position_value.transpose());
-      ROS_INFO_STREAM("leader_velocity_value: "<< leader_velocity_value.transpose());
-      ROS_INFO_STREAM("acceleration: "<< (*acceleration).transpose());
-      position_error_accumulate = position_error;
+      // position_error_accumulate = position_error;
       new_data_approach_=false;
     }else{
       *acceleration = 

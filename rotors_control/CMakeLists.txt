@@ -24,9 +24,8 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
-  ${Eigen_INCLUDE_DIRS}
 )
-
+include_directories(${Eigen_INCLUDE_DIRS})
 add_library(lee_position_controller
   src/library/lee_position_controller.cpp
 )
