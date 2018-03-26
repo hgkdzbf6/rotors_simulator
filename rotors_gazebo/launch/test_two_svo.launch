@@ -8,6 +8,7 @@
   <arg name="debug" default="false"/>
   <arg name="gui" default="true"/>
   <arg name="paused" default="false"/>
+  <arg name="feature_type" default="orb" />
   <arg name="control_use_true_value" default="true"/>
   <!-- The following line causes gzmsg and gzerr messages to be printed to the console
       (even when Gazebo is started through roslaunch) -->
@@ -31,6 +32,7 @@
     <arg name="x" value="-1.2"/>
     <arg name="y" value="-1.2"/>
     <arg name="z" value="0.1"/>
+    <arg name="feature_type" value="$(arg feature_type)"/>
     <arg name="is_leader" value="true" />
   </include>
 
@@ -39,6 +41,7 @@
     <arg name="x" value="1.2"/>
     <arg name="y" value="1.2"/>
     <arg name="z" value="0.1"/>
+    <arg name="feature_type" value="$(arg feature_type)"/>
     <arg name="is_leader" value="false" />
   </include>
   <!-- <include file="$(find rotors_gazebo)/launch/test_single_svo.launch">

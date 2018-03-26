@@ -10,6 +10,7 @@
   <arg name="x" default="0.0"/>
   <arg name="y" default="0.0"/>
   <arg name="z" default="0.1"/>
+  <arg name="feature_type" default="orb" />
   <arg name="control_use_true_value" default="false"/>
   <arg name="is_leader" default="true"/>
   <arg name="relative_str" default="relative_position01"/>
@@ -36,7 +37,7 @@
     </include>
 
 
-    <include file="$(find sift)/launch/orb.launch" >
+    <include file="$(find sift)/launch/$(arg feature_type).launch" >
       <param name="uav_index" value="$(arg index)"/>
     </include>
 
@@ -63,10 +64,12 @@
     <!--手柄的具体动作-->
     <node name="joy_control" pkg="rotors_gazebo" type="joy_control" output="screen" >
     </node>
-    <node name="follower_pose" pkg="rotors_utils" type="follower_pose" output="screen">
+    <node name="follower_pose" pkg="rotors_utils" type="follower_pose" output="screen"  >
       <param name="is_leader" value="$(arg is_leader)" />
       <param name="relative_str" value="$(arg relative_str)"/> 
     </node>
+    <!--follower节点的期望值计算节点-->
+    <node name="trajectory_generation" pkg="rotors_utils" type="trajectory_generation" output="screen" if="$(arg is_leader)"/>
 
     <node name="transformation" pkg="rotors_utils" type="transformation" output="screen" >
       <param name="mag_sub_frame" value="magnetometer" />

@@ -42,31 +42,31 @@ class JoyControl{
     ros::Timer timer_;
 
     void TimerCallback(const ros::TimerEvent & e){
-	  // Wait for 5 seconds to let the Gazebo GUI show up.
+      // Wait for 5 seconds to let the Gazebo GUI show up.
 
-	  trajectory_msgs::MultiDOFJointTrajectory trajectory_msg;
-	  trajectory_msg.header.stamp = ros::Time::now();
+      trajectory_msgs::MultiDOFJointTrajectory trajectory_msg;
+      trajectory_msg.header.stamp = ros::Time::now();
 
-	  // Default desired position and yaw.
-	  Eigen::Vector3d desired_position(0.0, 0.0, 1.0);
-	  double roll,pitch,desired_yaw = 0.0;
-	  desired_position.x()=pose_.pose.position.x;
-	  desired_position.y()=pose_.pose.position.y;
-	  desired_position.z()=pose_.pose.position.z;
+      // Default desired position and yaw.
+      Eigen::Vector3d desired_position(0.0, 0.0, 1.0);
+      double roll,pitch,desired_yaw = 0.0;
+      desired_position.x()=pose_.pose.position.x;
+      desired_position.y()=pose_.pose.position.y;
+      desired_position.z()=pose_.pose.position.z;
 
-	  // Overwrite defaults if set as node parameters.
-	  tf::Quaternion q(pose_.pose.orientation.x,
-		  pose_.pose.orientation.y,
-		  pose_.pose.orientation.z,
-		  pose_.pose.orientation.w);
-	  tf::Matrix3x3(q).getRPY(roll,pitch,desired_yaw);
+      // Overwrite defaults if set as node parameters.
+      tf::Quaternion q(pose_.pose.orientation.x,
+        pose_.pose.orientation.y,
+        pose_.pose.orientation.z,
+        pose_.pose.orientation.w);
+      tf::Matrix3x3(q).getRPY(roll,pitch,desired_yaw);
 
-	  mav_msgs::msgMultiDofJointTrajectoryFromPositionYaw(
-			desired_position, desired_yaw, &trajectory_msg);
-	  //ROS_INFO("Publishing waypoint on namespace %s: [%f, %f, %f].",
-				// nh_.getNamespace().c_str(), desired_position.x(),
-				// desired_position.y(), desired_position.z());
-	  trajectory_pub_.publish(trajectory_msg);	
+      mav_msgs::msgMultiDofJointTrajectoryFromPositionYaw(
+        desired_position, desired_yaw, &trajectory_msg);
+      //ROS_INFO("Publishing waypoint on namespace %s: [%f, %f, %f].",
+          // nh_.getNamespace().c_str(), desired_position.x(),
+          // desired_position.y(), desired_position.z());
+      trajectory_pub_.publish(trajectory_msg);	
     }
 
     void PoseCallback(const geometry_msgs::PoseStampedConstPtr & msg){
