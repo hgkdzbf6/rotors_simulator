@@ -29,6 +29,7 @@ namespace rotors_control {
 
 LeePositionControllerNode::LeePositionControllerNode(): start_formation_control_(false) {
   ros::NodeHandle nh;
+  ros::NodeHandle pnh("~");
   InitializeParams();
 
   cmd_pose_sub_ = nh.subscribe(
@@ -44,9 +45,10 @@ LeePositionControllerNode::LeePositionControllerNode(): start_formation_control_
 
   // 这里把leader的位置映射成odometry, 除了还要引入什么
   // 在leader坐标系下的follower位置
-  leader_position_sub_ = nh.subscribe("/hummingbird0/relative_position01",1,&LeePositionControllerNode::LeaderPositionCallback,this );
+  pnh.param<std::string>("relative_pose",relative_pose_str_,"/hummingbird0/relative_pose01");
+  leader_position_sub_ = nh.subscribe(relative_pose_str_,1,&LeePositionControllerNode::LeaderPositionCallback,this );
   // 在leader坐标系下的follower的desired位置
-  leader_desired_position_sub_ =nh.subscribe("leader_desired_position",1,&LeePositionControllerNode::LeaderDesiredPositionCallback,this);
+  leader_desired_pose_sub_ =nh.subscribe("leader_desired_pose",1,&LeePositionControllerNode::LeaderDesiredPositionCallback,this);
   
   // 起飞服务
   taking_off_server_ = nh.advertiseService("taking_off",

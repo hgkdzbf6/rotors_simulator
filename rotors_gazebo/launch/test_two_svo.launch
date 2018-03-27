@@ -29,6 +29,7 @@
 
   <include file="$(find rotors_gazebo)/launch/test_single_svo.launch">
     <arg name="index" value="$(arg mav_index1)" />
+    <arg name="follower_index" value="$(arg mav_index2)" />
     <arg name="x" value="-1.2"/>
     <arg name="y" value="-1.2"/>
     <arg name="z" value="0.1"/>
@@ -38,6 +39,7 @@
 
   <include file="$(find rotors_gazebo)/launch/test_single_svo.launch">
     <arg name="index" value="$(arg mav_index2)" />
+    <arg name="follower_index" value="$(arg mav_index1)" />
     <arg name="x" value="1.2"/>
     <arg name="y" value="1.2"/>
     <arg name="z" value="0.1"/>

@@ -1,6 +1,7 @@
 <!-- this is for svo -->
 <launch>
-  <arg name="index" default="1" />
+  <arg name="index" default="0" />
+  <arg name="follower_index" default="1" />
   <arg name="mav_name" default="hummingbird"/>
   <arg name="model_name" default="hummingbird"/>
   <arg name="enable_logging" default="false" />
@@ -13,7 +14,6 @@
   <arg name="feature_type" default="orb" />
   <arg name="control_use_true_value" default="false"/>
   <arg name="is_leader" default="true"/>
-  <arg name="relative_str" default="relative_position01"/>
 
   <!-- The following line causes gzmsg and gzerr messages to be printed to the console
       (even when Gazebo is started through roslaunch) -->
@@ -36,15 +36,18 @@
       <arg name="z" value="$(arg z)"/>
     </include>
 
+    <!--<include file="$(find sift)/launch/$(arg feature_type).launch" >
+    </include>-->
 
-    <include file="$(find sift)/launch/$(arg feature_type).launch" >
+    <node name="$(arg feature_type)_main" pkg="sift" type="$(arg feature_type)" output="screen">
       <param name="uav_index" value="$(arg index)"/>
-    </include>
+    </node>
 
     <!--控制器 -->
     <node name="lee_position_controller_node" pkg="rotors_control" type="lee_position_controller_node" output="screen" >
       <rosparam command="load" file="$(find rotors_utils)/cfg/lee_controller_$(arg model_name).yaml" />
       <rosparam command="load" file="$(find rotors_utils)/cfg/$(arg model_name).yaml" />
+      <param name="relative_pose" value="relative_pose$(arg index)$(arg follower_index)"/>
       <remap from="odometry" to="odometry_sensor1/odometry" if="$(arg control_use_true_value)"/>
       <remap from="odometry" to="odometry_pub_frame" unless="$(arg control_use_true_value)"/>
       <param name="take_off_height" value="$(arg take_off_height)-2" />
@@ -59,6 +62,7 @@
     <!--算了不用了,改手柄的command_control吧-->
     <node name="joy_pose_interface" pkg="rotors_utils" type="joy_pose"  output="screen" >
       <param name="is_leader" value="$(arg is_leader)" />
+      <param name="target_pose" value="target_pose"/>
       <param name="take_off_height" value="$(arg take_off_height)" />
     </node>
     <!--手柄的具体动作-->
@@ -66,10 +70,18 @@
     </node>
     <node name="follower_pose" pkg="rotors_utils" type="follower_pose" output="screen"  >
       <param name="is_leader" value="$(arg is_leader)" />
-      <param name="relative_str" value="$(arg relative_str)"/> 
+      <param name="relative_str" value="relative_pose$(arg index)$(arg follower_index)"/> 
     </node>
     <!--follower节点的期望值计算节点-->
-    <node name="trajectory_generation" pkg="rotors_utils" type="trajectory_generation" output="screen" if="$(arg is_leader)"/>
+    <node name="trajectory_generation" pkg="rotors_utils" type="trajectory_generation" output="screen" if="$(arg is_leader)">
+      <param name="my_id" value="$(arg index)"/>
+      <param name="follower_id" value="$(arg follower_index)"/>
+      <param name="T_L2_F2" value="relative_pose$(arg index)$(arg follower_index)"/>
+      <param name="T_LS_L2" value="svo/fusion_pose"/>
+      <param name="T_FS_F2" value="/$(arg mav_name)$(arg follower_index)/svo/fusion_pose"/>
+      <param name="T_L2_dF2" value="/$(arg mav_name)$(arg follower_index)/leader_desired_pose"/>
+      <param name="T_FW_dF2" value="target_pose"/>
+    </node>
 
     <node name="transformation" pkg="rotors_utils" type="transformation" output="screen" >
       <param name="mag_sub_frame" value="magnetometer" />

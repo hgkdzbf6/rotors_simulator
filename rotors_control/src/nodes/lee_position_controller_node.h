@@ -53,6 +53,7 @@ class LeePositionControllerNode {
   LeePositionController lee_position_controller_;
 
   std::string namespace_;
+  std::string relative_pose_str_;
 
   // subscribers
   ros::Subscriber cmd_trajectory_sub_;
@@ -62,7 +63,7 @@ class LeePositionControllerNode {
   ros::ServiceClient svo_control_client_;
   ros::ServiceServer taking_off_server_;
   ros::Subscriber leader_position_sub_;
-  ros::Subscriber leader_desired_position_sub_;
+  ros::Subscriber leader_desired_pose_sub_;
 
   ros::Publisher motor_velocity_reference_pub_;
 

@@ -186,7 +186,7 @@ Visualization Manager:
       Name: UAV2
     - Class: rviz/Image
       Enabled: true
-      Image Topic: /hummingbird0/pipei01
+      Image Topic: /hummingbird0/match01
       Max Value: 1
       Median window: 5
       Min Value: 0
