@@ -74,7 +74,8 @@ class JoyControl{
     }
 
   public:
-    JoyControl():pose_sub_(nh_.subscribe("command_pose",10,&JoyControl::PoseCallback,this)),
+    // JoyControl():pose_sub_(nh_.subscribe("command_pose",10,&JoyControl::PoseCallback,this)),
+    JoyControl():pose_sub_(nh_.subscribe("filtered_pose",10,&JoyControl::PoseCallback,this)),
     trajectory_pub_(nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>(mav_msgs::default_topics::COMMAND_TRAJECTORY, 10)){
       ros::NodeHandle nh_private("~");
       ROS_INFO("Started joy control");
