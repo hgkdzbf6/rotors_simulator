@@ -27,6 +27,7 @@
 #include "rotors_control/common.h"
 #include "rotors_control/parameters.h"
 
+#include <geometry_msgs/TwistStamped.h>
 namespace rotors_control {
 
 // Default values for the lee position controller and the Asctec Firefly.
@@ -79,6 +80,8 @@ class LeePositionController {
   void SetEnable(bool val);
   void SetTakingoff(bool val);
   bool GetTakingoff();
+  Eigen::Vector3d rotationMatrix2Eular(Eigen::Matrix3d R);
+  geometry_msgs::TwistStamped getTwist();
 
   LeePositionControllerParameters controller_parameters_;
   VehicleParameters vehicle_parameters_;
@@ -91,9 +94,13 @@ class LeePositionController {
 
   bool new_data_approach_;
 
+  geometry_msgs::TwistStamped twist_;
+  geometry_msgs::TwistStamped twist_cmd_;
   Eigen::Vector3d normalized_attitude_gain_;
   Eigen::Vector3d normalized_angular_rate_gain_;
   Eigen::MatrixX4d angular_acc_to_rotor_velocities_;
+  Eigen::Vector3d angle_error_;
+  Eigen::Vector3d angle_;
 
   mav_msgs::EigenTrajectoryPoint command_trajectory_;
   EigenOdometry odometry_;
@@ -101,7 +108,7 @@ class LeePositionController {
   EigenOdometry leader_desired_odometry_;
 
   void ComputeDesiredAngularAcc(const Eigen::Vector3d& acceleration,
-                                Eigen::Vector3d* angular_acceleration) const;
+                                Eigen::Vector3d* angular_acceleration) ;
   void ComputeDesiredAcceleration(Eigen::Vector3d* acceleration) ;
 };
 }

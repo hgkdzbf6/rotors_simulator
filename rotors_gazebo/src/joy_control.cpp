@@ -40,6 +40,7 @@ class JoyControl{
     ros::Publisher trajectory_pub_;
     geometry_msgs::PoseStamped pose_;
     ros::Timer timer_;
+    bool is_real_;
 
     void TimerCallback(const ros::TimerEvent & e){
       // Wait for 5 seconds to let the Gazebo GUI show up.
@@ -79,24 +80,28 @@ class JoyControl{
     trajectory_pub_(nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>(mav_msgs::default_topics::COMMAND_TRAJECTORY, 10)){
       ros::NodeHandle nh_private("~");
       ROS_INFO("Started joy control");
-
-      std_srvs::Empty srv;
-      bool unpaused = ros::service::call("/gazebo/unpause_physics", srv);
-      unsigned int i = 0;
-
+      nh_private.param<bool>("is_real",is_real_,10);
       // Trying to unpause Gazebo for 10 seconds.
-      while (i <= 10 && !unpaused) {
-        ROS_INFO("Wait for 1 second before trying to unpause Gazebo again.");
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+      std_srvs::Empty srv;
+      bool unpaused;
+      if(!is_real_){
+        unsigned int i = 0;
         unpaused = ros::service::call("/gazebo/unpause_physics", srv);
-        ++i;
+        while (i <= 10 && !unpaused) {
+          ROS_INFO("Wait for 1 second before trying to unpause Gazebo again.");
+          std::this_thread::sleep_for(std::chrono::seconds(1));
+          unpaused = ros::service::call("/gazebo/unpause_physics", srv);
+          ++i;
+        }
       }
       timer_=nh_.createTimer(ros::Duration(0.1),&JoyControl::TimerCallback,this);
-      if (!unpaused) {
-        ROS_FATAL("Could not wake up Gazebo.");
-        return ;
-      } else {
-        ROS_INFO("Unpaused the Gazebo simulation.");
+      if(!is_real_){
+        if (!unpaused) {
+          ROS_FATAL("Could not wake up Gazebo.");
+          return ;
+        } else {
+          ROS_INFO("Unpaused the Gazebo simulation.");
+        }
       }
       ros::spin();
     }

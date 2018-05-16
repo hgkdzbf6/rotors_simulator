@@ -63,6 +63,7 @@ LeePositionControllerNode::LeePositionControllerNode(): start_formation_control_
   command_timer_ = nh.createTimer(ros::Duration(0), &LeePositionControllerNode::TimedCommandCallback, this,
                                   true, false);
 
+  twist_pub_ = nh.advertise<geometry_msgs::TwistStamped>("cmd_twist",10);
   timer_=nh.createTimer(ros::Duration(0.01),&LeePositionControllerNode::TimerCallback,this);
 }
 
@@ -215,6 +216,7 @@ void LeePositionControllerNode::TimerCallback(const ros::TimerEvent & e){
   }else{
 	// ROS_INFO("%lf", odometry_.position(2));
   }
+  twist_pub_.publish(lee_position_controller_.getTwist());
 }
 
 void LeePositionControllerNode::TimedCommandCallback(const ros::TimerEvent& e) {

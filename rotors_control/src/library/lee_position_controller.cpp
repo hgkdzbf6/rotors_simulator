@@ -82,7 +82,10 @@ void LeePositionController::CalculateRotorVelocities(Eigen::VectorXd* rotor_velo
   if(taking_off_){
 	  thrust=9;
   }
-
+  
+  // twist_.linear.z = thrust;
+  twist_.twist.linear.z = odometry_.position(2);
+  twist_cmd_ = twist_; 
   Eigen::Vector4d angular_acceleration_thrust;
   angular_acceleration_thrust.block<3, 1>(0, 0) = angular_acceleration;
   angular_acceleration_thrust(3) = thrust;
@@ -133,11 +136,7 @@ void LeePositionController::ComputeDesiredAcceleration(Eigen::Vector3d* accelera
   // leader的旋转矩阵
   // float theta = atan2(leader_odometry_.position(1),leader_odometry_.position(0));
   Eigen::Vector3d leader_position_error;
-  leader_position_error = command_trajectory_.position_W ;
-  if(start_formation_control_ && new_data_approach_){
-    // leader_position_error+=leader_desired_odometry_.position+odometry_.position-leader_odometry_.position-3*e_3;
-    // ROS_INFO_STREAM("leader_position_error:"<<leader_position_error);
-  }
+  leader_position_error = command_trajectory_.position_W;
 
   // static Eigen::Vector3d position_error_accumulate;
   Eigen::Vector3d position_error;
@@ -145,81 +144,35 @@ void LeePositionController::ComputeDesiredAcceleration(Eigen::Vector3d* accelera
   // position_error = odometry_.position - command_trajectory_.position_W;
   position_error = odometry_.position - leader_position_error;
 
-  if(start_formation_control_ && new_data_approach_){
-    // ROS_INFO_STREAM("position_error:"<<position_error);
-  }
-
   // Transform velocity to world frame.
   const Eigen::Matrix3d R_W_I = odometry_.orientation.toRotationMatrix();
   Eigen::Vector3d velocity_W =  R_W_I * odometry_.velocity;
   Eigen::Vector3d velocity_error;
   velocity_error = velocity_W - command_trajectory_.velocity_W;
+  
+  *acceleration = 
+      ( position_error.cwiseProduct(controller_parameters_.position_gain_)
+      + velocity_error.cwiseProduct(controller_parameters_.velocity_gain_)
+      ) / vehicle_parameters_.mass_
+      - vehicle_parameters_.gravity_ * e_3 - command_trajectory_.acceleration_W;
 
-  // 计算leader的速度误差
-  // 这里和上面不一样,因为这里速度和速度的设定值全部是在leader坐标系下的
-  // Eigen::Vector3d leader_velocity_error;
-  // Eigen::Vector3d leader_velocity_value;
-  // leader_velocity_error = leader_odometry_.velocity - leader_desired_odometry_.velocity;
-  // leader_velocity_value = leader_velocity_error.cwiseProduct(controller_parameters_.leader_velocity_gain_);
+}
 
-  // if(leader_position_value(0)>3)leader_position_value(0)=3;
-  // if(leader_position_value(0)<-3)leader_position_value(0)=-3;
-  // if(leader_position_value(1)>3)leader_position_value(1)=3;
-  // if(leader_position_value(1)<-3)leader_position_value(1)=-3;
-  // if(leader_position_value(2)>3)leader_position_value(2)=3;
-  // if(leader_position_value(2)<-3)leader_position_value(2)=-3;
+Eigen::Vector3d LeePositionController::rotationMatrix2Eular(Eigen::Matrix3d R){
+  Eigen::Vector3d eular;
+  // 这个顺序究竟是怎么样的?
+  eular = R.eulerAngles(0,1,2);
+  return eular;
+}
 
-  // if(leader_velocity_value(0)>3)leader_velocity_value(0)=3;
-  // if(leader_velocity_value(0)<-3)leader_velocity_value(0)=-3;
-  // if(leader_velocity_value(1)>3)leader_velocity_value(1)=3;
-  // if(leader_velocity_value(1)<-3)leader_velocity_value(1)=-3;
-  // if(leader_velocity_value(2)>3)leader_velocity_value(2)=3;
-  // if(leader_velocity_value(2)<-3)leader_velocity_value(2)=-3;
-
-  // ROS_INFO_STREAM("leader_position_error: "<< leader_position_error.transpose());
-  // ROS_INFO_STREAM("leader_velocity_error: "<< leader_velocity_error.transpose());
-
-
-  if(start_formation_control_ && new_data_approach_){
-
-    if(new_data_approach_){
-      *acceleration = 
-          ( position_error.cwiseProduct(controller_parameters_.position_gain_)
-          + velocity_error.cwiseProduct(controller_parameters_.velocity_gain_)
-          // leader_position_value
-          // + leader_velocity_value
-          ) / vehicle_parameters_.mass_
-          - vehicle_parameters_.gravity_ * e_3 - command_trajectory_.acceleration_W;
-      // *acceleration = 
-      //     ( position_error.cwiseProduct(controller_parameters_.position_gain_)
-      //     + velocity_error.cwiseProduct(controller_parameters_.velocity_gain_)
-      //     - leader_position_error.cwiseProduct(controller_parameters_.leader_position_gain_)
-      //     - leader_velocity_error.cwiseProduct(controller_parameters_.leader_velocity_gain_)
-      //     ) / vehicle_parameters_.mass_
-      //     - vehicle_parameters_.gravity_ * e_3 - command_trajectory_.acceleration_W;
-
-      // position_error_accumulate = position_error;
-      new_data_approach_=false;
-    }else{
-      *acceleration = 
-          ( position_error.cwiseProduct(controller_parameters_.position_gain_)
-          + velocity_error.cwiseProduct(controller_parameters_.velocity_gain_)
-          ) / vehicle_parameters_.mass_
-          - vehicle_parameters_.gravity_ * e_3 - command_trajectory_.acceleration_W;
-    }
-  }else{
-    *acceleration = 
-        ( position_error.cwiseProduct(controller_parameters_.position_gain_)
-        + velocity_error.cwiseProduct(controller_parameters_.velocity_gain_)
-        ) / vehicle_parameters_.mass_
-        - vehicle_parameters_.gravity_ * e_3 - command_trajectory_.acceleration_W;
-  }
+geometry_msgs::TwistStamped LeePositionController::getTwist(){
+  return twist_cmd_;
 }
 
 // Implementation from the T. Lee et al. paper
 // Control of complex maneuvers for a quadrotor UAV using geometric methods on SE(3)
 void LeePositionController::ComputeDesiredAngularAcc(const Eigen::Vector3d& acceleration,
-                                                     Eigen::Vector3d* angular_acceleration) const {
+                                                     Eigen::Vector3d* angular_acceleration) {
   assert(angular_acceleration);
 
   Eigen::Matrix3d R = odometry_.orientation.toRotationMatrix();
@@ -244,11 +197,13 @@ void LeePositionController::ComputeDesiredAngularAcc(const Eigen::Vector3d& acce
   R_des.col(1) = b2_des;
   R_des.col(2) = b3_des;
 
-
   // Angle error according to lee et al.
   Eigen::Matrix3d angle_error_matrix = 0.5 * (R_des.transpose() * R - R.transpose() * R_des);
-  Eigen::Vector3d angle_error;
-  vectorFromSkewMatrix(angle_error_matrix, &angle_error);
+  angle_ = rotationMatrix2Eular(R_des);
+  twist_.twist.linear.x = angle_(0);
+  twist_.twist.linear.y = angle_(1);
+  twist_.twist.angular.z = angle_error_(2); 
+  vectorFromSkewMatrix(angle_error_matrix, &angle_error_);
 
   // TODO(burrimi) include angular rate references at some point.
   Eigen::Vector3d angular_rate_des(Eigen::Vector3d::Zero());
@@ -263,23 +218,14 @@ void LeePositionController::ComputeDesiredAngularAcc(const Eigen::Vector3d& acce
   Eigen::Matrix3d skew_angular;
   //Eigen::Vector3d& v=odometry_.angular_velocity;
   cskewMatrixFromVector(odometry_.angular_velocity,&skew_angular);
+  // 这里面要加两项
+  // 一项是角度的偏差
+  // 一项是角速度的偏差
+  *angular_acceleration = -1 * angle_error_.cwiseProduct(normalized_attitude_gain_)
+                          - angular_rate_error.cwiseProduct(normalized_angular_rate_gain_)
+                          + odometry_.angular_velocity.cross(J * odometry_.angular_velocity)
+                          - J*(skew_angular*R.transpose()*R_des*angular_rate_des
+                          - R.transpose()*R_des*angular_acc_des); // we don't need the inertia matrix here
 
-  if(start_formation_control_){
-    // 这里面要加两项
-    // 一项是角度的偏差
-    // 一项是角速度的偏差
-    *angular_acceleration = -1 * angle_error.cwiseProduct(normalized_attitude_gain_)
-                            - angular_rate_error.cwiseProduct(normalized_angular_rate_gain_)
-                            + odometry_.angular_velocity.cross(J * odometry_.angular_velocity)
-                            - J*(skew_angular*R.transpose()*R_des*angular_rate_des
-                            - R.transpose()*R_des*angular_acc_des); // we don't need the inertia matrix here
-  }else{
-    // 这是原来的
-    *angular_acceleration = -1 * angle_error.cwiseProduct(normalized_attitude_gain_)
-                            - angular_rate_error.cwiseProduct(normalized_angular_rate_gain_)
-                            + odometry_.angular_velocity.cross(J * odometry_.angular_velocity)
-                            - J*(skew_angular*R.transpose()*R_des*angular_rate_des
-                            - R.transpose()*R_des*angular_acc_des); // we don't need the inertia matrix here
-  }
 }
 }

@@ -66,6 +66,7 @@ class LeePositionControllerNode {
   ros::Subscriber leader_desired_pose_sub_;
 
   ros::Publisher motor_velocity_reference_pub_;
+  ros::Publisher twist_pub_;
 
   mav_msgs::EigenTrajectoryPointDeque commands_;
   std::deque<ros::Duration> command_waiting_times_;
