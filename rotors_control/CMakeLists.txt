@@ -30,6 +30,10 @@ add_library(lee_position_controller
   src/library/lee_position_controller.cpp
 )
 
+add_library(sliding_mode_controller
+  src/library/sliding_mode_controller.cpp
+)
+
 add_library(roll_pitch_yawrate_thrust_controller
   src/library/roll_pitch_yawrate_thrust_controller.cpp
 )
@@ -44,6 +48,11 @@ add_executable(lee_position_controller_node src/nodes/lee_position_controller_no
 add_dependencies(lee_position_controller_node ${catkin_EXPORTED_TARGETS})
 target_link_libraries(lee_position_controller_node
   lee_position_controller ${catkin_LIBRARIES})
+  
+add_executable(sliding_mode_node src/nodes/sliding_mode_node.cpp)
+add_dependencies(sliding_mode_node ${catkin_EXPORTED_TARGETS})
+target_link_libraries(sliding_mode_node
+  sliding_mode_controller ${catkin_LIBRARIES})
 
 add_executable(roll_pitch_yawrate_thrust_controller_node
   src/nodes/roll_pitch_yawrate_thrust_controller_node.cpp)
@@ -55,7 +64,7 @@ install(TARGETS lee_position_controller roll_pitch_yawrate_thrust_controller
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )
 
-install(TARGETS lee_position_controller_node roll_pitch_yawrate_thrust_controller_node
+install(TARGETS lee_position_controller_node roll_pitch_yawrate_thrust_controller_node sliding_mode_node
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

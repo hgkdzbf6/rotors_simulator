@@ -30,7 +30,7 @@ class RateController : public ControllerBase {
     virtual ~RateController();
     virtual void InitializeParams();
     virtual std::shared_ptr<ControllerBase> Clone();
-    virtual void CalculateRotorVelocities(Eigen::VectorXd* rotor_velocities) const;
+    virtual void CalculateRotorVelocities(Eigen::VectorXd* rotor_velocities) ;
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   private:

@@ -31,11 +31,108 @@ RollPitchYawrateThrustControllerNode::RollPitchYawrateThrustControllerNode() {
 
   cmd_roll_pitch_yawrate_thrust_sub_ = nh.subscribe(kDefaultCommandRollPitchYawrateThrustTopic, 1,
                                      &RollPitchYawrateThrustControllerNode::RollPitchYawrateThrustCallback, this);
+  
+  cmd_multi_dof_joint_trajectory_sub_ = nh.subscribe(
+      mav_msgs::default_topics::COMMAND_TRAJECTORY, 1,
+      &RollPitchYawrateThrustControllerNode::MultiDofJointTrajectoryCallback, this);
+  
   odometry_sub_ = nh.subscribe(kDefaultOdometryTopic, 1,
                                &RollPitchYawrateThrustControllerNode::OdometryCallback, this);
 
   motor_velocity_reference_pub_ = nh.advertise<mav_msgs::Actuators>(
-      kDefaultCommandMotorSpeedTopic, 1);
+      kDefaultCommandMotorSpeedTopic, 1);  
+      
+  command_timer_ = nh.createTimer(ros::Duration(0), &RollPitchYawrateThrustControllerNode::TimedCommandCallback, this,
+                                  true, false);
+
+  taking_off_server_ = nh.advertiseService("taking_off",
+		  &RollPitchYawrateThrustControllerNode::TakingoffCallback,this);
+
+  // twist_pub_ = nh.advertise<geometry_msgs::TwistStamped>("cmd_twist",10);
+  timer_=nh.createTimer(ros::Duration(0.01),&RollPitchYawrateThrustControllerNode::TimerCallback,this);
+  ROS_INFO_STREAM("hellp ");
+}
+bool RollPitchYawrateThrustControllerNode::TakingoffCallback(
+		std_srvs::Trigger::Request &req,
+		std_srvs::Trigger::Response &res){
+	roll_pitch_yawrate_thrust_controller_.SetTakingoff(true);
+	res.message="take off success";
+	res.success=true;
+	return true;
+}
+void RollPitchYawrateThrustControllerNode::TimerCallback(const ros::TimerEvent & e){
+
+  if(roll_pitch_yawrate_thrust_controller_.GetTakingoff() && odometry_.position(2)>take_off_height_ ){
+	  //first stop take off behavior
+	  roll_pitch_yawrate_thrust_controller_.SetTakingoff(false);
+	  ROS_INFO("take off finished!");
+	  //next send to svo to restart the position calculation.
+	  std_srvs::Trigger srv;
+	  if(svo_control_client_.call(srv)){
+		ROS_INFO("message: %s",srv.response.message.c_str());
+	  }else{
+		ROS_ERROR("Failed to call service add_two_ints");
+	  }
+  }else{
+	// ROS_INFO("%lf", odometry_.position(2));
+  }
+  // twist_pub_.publish(roll_pitch_yawrate_thrust_controller_.getTwist());
+}
+
+void RollPitchYawrateThrustControllerNode::MultiDofJointTrajectoryCallback(
+    const trajectory_msgs::MultiDOFJointTrajectoryConstPtr& msg) {
+  // Clear all pending commands.
+  command_timer_.stop();
+  commands_.clear();
+  command_waiting_times_.clear();
+
+  const size_t n_commands = msg->points.size();
+
+  if(n_commands < 1){
+    ROS_WARN_STREAM("Got MultiDOFJointTrajectory message, but message has no points.");
+    return;
+  }
+
+  mav_msgs::EigenTrajectoryPoint eigen_reference;
+  mav_msgs::eigenTrajectoryPointFromMsg(msg->points.front(), &eigen_reference);
+  commands_.push_front(eigen_reference);
+
+  for (size_t i = 1; i < n_commands; ++i) {
+    const trajectory_msgs::MultiDOFJointTrajectoryPoint& reference_before = msg->points[i-1];
+    const trajectory_msgs::MultiDOFJointTrajectoryPoint& current_reference = msg->points[i];
+
+    mav_msgs::eigenTrajectoryPointFromMsg(current_reference, &eigen_reference);
+
+    commands_.push_back(eigen_reference);
+    command_waiting_times_.push_back(current_reference.time_from_start - reference_before.time_from_start);
+  }
+
+  // We can trigger the first command immediately.
+  roll_pitch_yawrate_thrust_controller_.SetTrajectoryPoint(commands_.front());
+  commands_.pop_front();
+
+  if (n_commands > 1) {
+    command_timer_.setPeriod(command_waiting_times_.front());
+    command_waiting_times_.pop_front();
+    command_timer_.start();
+  }
+}
+void RollPitchYawrateThrustControllerNode::TimedCommandCallback(const ros::TimerEvent& e) {
+
+  if(commands_.empty()){
+    ROS_WARN("Commands empty, this should not happen here");
+    return;
+  }
+
+  const mav_msgs::EigenTrajectoryPoint eigen_reference = commands_.front();
+  roll_pitch_yawrate_thrust_controller_.SetTrajectoryPoint(commands_.front());
+  commands_.pop_front();
+  command_timer_.stop();
+  if(!command_waiting_times_.empty()){
+    command_timer_.setPeriod(command_waiting_times_.front());
+    command_waiting_times_.pop_front();
+    command_timer_.start();
+  }
 }
 
 RollPitchYawrateThrustControllerNode::~RollPitchYawrateThrustControllerNode() { }
@@ -82,6 +179,7 @@ void RollPitchYawrateThrustControllerNode::OdometryCallback(const nav_msgs::Odom
 
   EigenOdometry odometry;
   eigenOdometryFromMsg(odometry_msg, &odometry);
+  odometry_=odometry;
   roll_pitch_yawrate_thrust_controller_.SetOdometry(odometry);
 
   Eigen::VectorXd ref_rotor_velocities;

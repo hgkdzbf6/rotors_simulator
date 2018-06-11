@@ -18,16 +18,17 @@
  * limitations under the License.
  */
 
-#ifndef ROTORS_CONTROL_ROLL_PITCH_YAWRATE_THRUST_CONTROLLER_NODE_H
-#define ROTORS_CONTROL_ROLL_PITCH_YAWRATE_THRUST_CONTROLLER_NODE_H
+#ifndef ROTORS_CONTROL_SLIDING_MODE_NODE_H
+#define ROTORS_CONTROL_SLIDING_MODE_NODE_H
 
 #include <boost/bind.hpp>
 #include <Eigen/Eigen>
 #include <stdio.h>
 
 #include <geometry_msgs/PoseStamped.h>
-#include <mav_msgs/RollPitchYawrateThrust.h>
 #include <mav_msgs/Actuators.h>
+#include <mav_msgs/AttitudeThrust.h>
+#include <mav_msgs/eigen_mav_msgs.h>
 #include <nav_msgs/Odometry.h>
 #include <std_srvs/Trigger.h>
 #include <ros/callback_queue.h>
@@ -35,56 +36,64 @@
 #include <trajectory_msgs/MultiDOFJointTrajectory.h>
 
 #include "rotors_control/common.h"
-#include "rotors_control/roll_pitch_yawrate_thrust_controller.h"
+#include "rotors_control/sliding_mode_controller.h"
 
 namespace rotors_control {
 
-class RollPitchYawrateThrustControllerNode {
+class SlidingModeNode {
  public:
-  RollPitchYawrateThrustControllerNode();
-  ~RollPitchYawrateThrustControllerNode();
+  SlidingModeNode();
+  ~SlidingModeNode();
 
   void InitializeParams();
   void Publish();
 
  private:
 
-  RollPitchYawrateThrustController roll_pitch_yawrate_thrust_controller_;
+  SlidingModeController sliding_mode_controller_;
 
   std::string namespace_;
+  std::string relative_pose_str_;
 
   // subscribers
+  ros::Subscriber cmd_trajectory_sub_;
   ros::Subscriber cmd_multi_dof_joint_trajectory_sub_;
-  ros::Subscriber cmd_roll_pitch_yawrate_thrust_sub_;
+  ros::Subscriber cmd_pose_sub_;
   ros::Subscriber odometry_sub_;
-  // service client
   ros::ServiceClient svo_control_client_;
   ros::ServiceServer taking_off_server_;
-  ros::Publisher motor_velocity_reference_pub_; 
+  ros::Subscriber leader_position_sub_;
+  ros::Subscriber leader_desired_pose_sub_;
+
+  ros::Publisher motor_velocity_reference_pub_;
   ros::Publisher twist_pub_;
-  
+
   mav_msgs::EigenTrajectoryPointDeque commands_;
   std::deque<ros::Duration> command_waiting_times_;
-  double take_off_height_;
 
-  // timer
+  bool start_formation_control_;
+  ros::Time last_odometry_msg_stamp_;
+  double take_off_height_;
+  EigenOdometry odometry_;
   ros::Timer command_timer_;
   ros::Timer timer_;
-  EigenOdometry odometry_;
 
-  void RollPitchYawrateThrustCallback(
-      const mav_msgs::RollPitchYawrateThrustConstPtr& roll_pitch_yawrate_thrust_reference_msg);
-  void MultiDofJointTrajectoryCallback(
-      const trajectory_msgs::MultiDOFJointTrajectoryConstPtr& trajectory_reference_msg);
-  
   bool TakingoffCallback(
   		std_srvs::Trigger::Request &req,
   		std_srvs::Trigger::Response &res);
   void TimedCommandCallback(const ros::TimerEvent& e);
   void TimerCallback(const ros::TimerEvent& e);
-  
+
+  void MultiDofJointTrajectoryCallback(
+      const trajectory_msgs::MultiDOFJointTrajectoryConstPtr& trajectory_reference_msg);
+
+  void LeaderPositionCallback(const geometry_msgs::PoseStampedConstPtr& msg);
+  void LeaderDesiredPositionCallback(const geometry_msgs::PoseStampedConstPtr& msg);
+  void CommandPoseCallback(
+      const geometry_msgs::PoseStampedConstPtr& pose_msg);
+
   void OdometryCallback(const nav_msgs::OdometryConstPtr& odometry_msg);
 };
 }
 
-#endif // ROTORS_CONTROL_ROLL_PITCH_YAWRATE_THRUST_CONTROLLER_NODE_H
+#endif // ROTORS_CONTROL_SLIDING_MODE_NODE_H

@@ -18,8 +18,8 @@
  * limitations under the License.
  */
 
-#ifndef ROTORS_CONTROL_ROLL_PITCH_YAWRATE_THRUST_CONTROLLER_H
-#define ROTORS_CONTROL_ROLL_PITCH_YAWRATE_THRUST_CONTROLLER_H
+#ifndef ROTORS_CONTROL_SLIDING_MODE_CONTROLLER_H
+#define ROTORS_CONTROL_SLIDING_MODE_CONTROLLER_H
 
 #include <mav_msgs/conversions.h>
 #include <mav_msgs/eigen_mav_msgs.h>
@@ -27,18 +27,22 @@
 #include "rotors_control/common.h"
 #include "rotors_control/parameters.h"
 
+#include <geometry_msgs/TwistStamped.h>
 namespace rotors_control {
 
-// Default values for the roll pitch yawrate thrust controller and the Asctec Firefly.
+// Default values for the lee position controller and the Asctec Firefly.
+static const Eigen::Vector3d kDefaultPositionGain = Eigen::Vector3d(6, 6, 6);
+static const Eigen::Vector3d kDefaultVelocityGain = Eigen::Vector3d(4.7, 4.7, 4.7);
 static const Eigen::Vector3d kDefaultAttitudeGain = Eigen::Vector3d(3, 3, 0.035);
 static const Eigen::Vector3d kDefaultAngularRateGain = Eigen::Vector3d(0.52, 0.52, 0.025);
 
-class RollPitchYawrateThrustControllerParameters {
+class SlidingModeControllerParameters {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
-  RollPitchYawrateThrustControllerParameters()
-      :k1(9),k2(18),lambda1(5),lambda2(4),rho(0.9), 
-      attitude_gain_(kDefaultAttitudeGain),
+  SlidingModeControllerParameters()
+      : k1(9),k2(18),lambda1(5),lambda2(4),rho(0.9),
+      position_gain_(kDefaultPositionGain),velocity_gain_(kDefaultVelocityGain),
+        attitude_gain_(kDefaultAttitudeGain),
         angular_rate_gain_(kDefaultAngularRateGain) {
           rho_1 = rho / (2-rho);
           rho_2 = rho;
@@ -53,28 +57,35 @@ class RollPitchYawrateThrustControllerParameters {
   double rho_1;
   double rho_2;
   Eigen::Matrix4Xd allocation_matrix_;
+  Eigen::Vector3d position_gain_;
+  Eigen::Vector3d velocity_gain_;
   Eigen::Vector3d attitude_gain_;
   Eigen::Vector3d angular_rate_gain_;
   RotorConfiguration rotor_configuration_;
 };
 
-class RollPitchYawrateThrustController {
+class SlidingModeController {
  public:
-  RollPitchYawrateThrustController();
-  ~RollPitchYawrateThrustController();
+  bool start_formation_control_;
+  
+  SlidingModeController();
+  ~SlidingModeController();
   void InitializeParameters();
   void CalculateRotorVelocities(Eigen::VectorXd* rotor_velocities) ;
-  void ComputeDesiredAcceleration(Eigen::Vector3d* acceleration);
+
   void SetOdometry(const EigenOdometry& odometry);
-  void SetRollPitchYawrateThrust(
-      const mav_msgs::EigenRollPitchYawrateThrust& roll_pitch_yawrate_thrust);
+  void SetLeaderOdometry(const EigenOdometry& odometry);
+  void SetLeaderDesiredOdometry(const EigenOdometry& odometry);
   void SetTrajectoryPoint(
     const mav_msgs::EigenTrajectoryPoint& command_trajectory);
 
   void SetEnable(bool val);
   void SetTakingoff(bool val);
   bool GetTakingoff();
-  RollPitchYawrateThrustControllerParameters controller_parameters_;
+  Eigen::Vector3d rotationMatrix2Eular(Eigen::Matrix3d R);
+  geometry_msgs::TwistStamped getTwist();
+
+  SlidingModeControllerParameters controller_parameters_;
   VehicleParameters vehicle_parameters_;
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -83,6 +94,7 @@ class RollPitchYawrateThrustController {
   bool controller_active_;
   bool taking_off_;
 
+  bool new_data_approach_;
   double sign(double input);
 
   Eigen::Vector3d s1_int_;
@@ -96,17 +108,23 @@ class RollPitchYawrateThrustController {
   double rho_1_;
   double rho_2_;
 
-  mav_msgs::EigenTrajectoryPoint command_trajectory_;
-
+  geometry_msgs::TwistStamped twist_;
+  geometry_msgs::TwistStamped twist_cmd_;
   Eigen::Vector3d normalized_attitude_gain_;
   Eigen::Vector3d normalized_angular_rate_gain_;
   Eigen::MatrixX4d angular_acc_to_rotor_velocities_;
+  Eigen::Vector3d angle_error_;
+  Eigen::Vector3d angle_;
 
-  mav_msgs::EigenRollPitchYawrateThrust roll_pitch_yawrate_thrust_;
+  mav_msgs::EigenTrajectoryPoint command_trajectory_;
   EigenOdometry odometry_;
+  EigenOdometry leader_odometry_;
+  EigenOdometry leader_desired_odometry_;
 
-  void ComputeDesiredAngularAcc(Eigen::Vector3d acceleration, Eigen::Vector3d* angular_acceleration) const;
+  void ComputeDesiredAngularAcc(const Eigen::Vector3d& acceleration,
+                                Eigen::Vector3d* angular_acceleration) ;
+  void ComputeDesiredAcceleration(Eigen::Vector3d* acceleration) ;
 };
 }
 
-#endif // ROTORS_CONTROL_ROLL_PITCH_YAWRATE_THRUST_CONTROLLER_H
+#endif // ROTORS_CONTROL_SLIDING_MODE_CONTROLLER_H
