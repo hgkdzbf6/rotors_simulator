@@ -191,8 +191,15 @@ void SlidingModeNode::TimerCallback(const ros::TimerEvent & e){
   actuator_msg->header.stamp = last_odometry_msg_stamp_;
   Eigen::Matrix3d R  =  (odometry_.orientation).toRotationMatrix();
   Eigen::Quaterniond q = odometry_.orientation;
-  ROS_INFO_STREAM(R.eulerAngles(2,1,0).transpose());
-  ROS_INFO_STREAM("w: "<<q.w()<<" x: "<<q.x()<<" y: "<<q.y()<<" z: "<<q.z());
+  double roll,pitch,yaw;
+  Eigen::Vector3d euler = R.eulerAngles(2,1,0).transpose();
+  roll = asin(sin(euler(0)));
+  pitch = asin(sin(euler(1)));
+  // yaw =2*asin(sin(euler(2)*0.5));
+  yaw =asin(sin(euler(2)));
+  // ROS_INFO_STREAM("roll: " << roll <<" pitch: " << pitch <<" yaw: " << yaw);
+  // ROS_INFO_STREAM(odometry_.position.transpose());
+  // ROS_INFO_STREAM("w: " << q.w() << " x: "<<q.x()<<" y: "<<q.y()<<" z: "<<q.z());
   motor_velocity_reference_pub_.publish(actuator_msg);
 
   twist_pub_.publish(sliding_mode_controller_.getTwist());

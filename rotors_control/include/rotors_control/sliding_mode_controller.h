@@ -40,7 +40,7 @@ class SlidingModeControllerParameters {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   SlidingModeControllerParameters()
-      : k1(9),k2(18),lambda1(5),lambda2(4),rho(0.9),
+      : k1(9),k2(18),lambda1(6),lambda2(4.7),rho(0.9),
       position_gain_(kDefaultPositionGain),velocity_gain_(kDefaultVelocityGain),
         attitude_gain_(kDefaultAttitudeGain),
         angular_rate_gain_(kDefaultAngularRateGain) {

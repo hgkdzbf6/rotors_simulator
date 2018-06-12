@@ -181,17 +181,30 @@ void SlidingModeController::ComputeDesiredAcceleration(Eigen::Vector3d* accelera
     u_t4 = -k2_* u_t4_int_(index);
     u(index) = u_t1 + u_t2 + u_t3+ u_t4;
   }
-  double temp;
-  temp = u(0);
-  u(0) = -u(1);
-  u(1) = -temp;
-  u(2) = -u(2);
-  // *acceleration = 
-  //     ( position_error.cwiseProduct(controller_parameters_.position_gain_)
-  //     + velocity_error.cwiseProduct(controller_parameters_.velocity_gain_)
-  //     ) / vehicle_parameters_.mass_
-  //     - vehicle_parameters_.gravity_ * e_3 - command_trajectory_.acceleration_W;
-  *acceleration = u;
+  static Eigen::Vector3d acc;
+  acc =  
+      ( position_error.cwiseProduct(controller_parameters_.position_gain_)
+      + velocity_error.cwiseProduct(controller_parameters_.velocity_gain_)
+      ) / vehicle_parameters_.mass_
+      - vehicle_parameters_.gravity_ * e_3 - command_trajectory_.acceleration_W;
+  // std::cout <<"here is always running" <<std::endl;
+  acc(0) = -u(0);
+            // position_error(0) / vehicle_parameters_.mass_ *  controller_parameters_.position_gain_(0)+ 
+            // velocity_error(0) / vehicle_parameters_.mass_ * controller_parameters_.velocity_gain_(0);
+  acc(1) = -u(1);
+            // position_error(1) / vehicle_parameters_.mass_ *  controller_parameters_.position_gain_(1)+ 
+            // velocity_error(1) / vehicle_parameters_.mass_ * controller_parameters_.velocity_gain_(1);
+  acc(2) = -vehicle_parameters_.gravity_ - u(2);
+            // position_error(2) / vehicle_parameters_.mass_ * controller_parameters_.position_gain_(2) + 
+            // velocity_error(2) / vehicle_parameters_.mass_ * controller_parameters_.velocity_gain_(2);
+  // double temp;
+  // temp = u(0);
+  // u(0) = -u(1);
+  // u(1) = -temp;
+  // u(2) = -u(2);
+  // acc(2) = -u(2);
+  *acceleration =acc;
+  // *acceleration = -u;//- vehicle_parameters_.gravity_ * e_3 - u;
 }
 
 Eigen::Vector3d SlidingModeController::rotationMatrix2Eular(Eigen::Matrix3d R){
@@ -229,9 +242,18 @@ void SlidingModeController::ComputeDesiredAngularAcc(const Eigen::Vector3d& acce
   b2_des.normalize();
 
   Eigen::Matrix3d R_des;
-  R_des.col(0) = b2_des.cross(b3_des);
-  R_des.col(1) = b2_des;
-  R_des.col(2) = b3_des;
+  // R_des.col(0) = b2_des.cross(b3_des);
+  // R_des.col(1) = b2_des;
+  // R_des.col(2) = b3_des;
+
+  double pitch,roll;
+  roll = asin(sin(-(-sin(yaw)*acceleration(0) - cos(yaw)*acceleration(1)) / vehicle_parameters_.gravity_));
+  pitch = asin(sin(-(cos(yaw)*acceleration(0) + sin(yaw)*acceleration(1)) / vehicle_parameters_.gravity_));
+  ROS_INFO_STREAM("pitch: " <<pitch<< " roll: "<<roll);
+  R_des = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ())  // yaw
+      * Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX())  // roll
+      * Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY());  // pitch
+
 
   // Angle error according to lee et al.
   Eigen::Matrix3d angle_error_matrix = 0.5 * (R_des.transpose() * R - R.transpose() * R_des);
