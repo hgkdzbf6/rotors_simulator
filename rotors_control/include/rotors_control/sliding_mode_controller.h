@@ -26,8 +26,9 @@
 
 #include "rotors_control/common.h"
 #include "rotors_control/parameters.h"
-
 #include <geometry_msgs/TwistStamped.h>
+#include <iostream>
+#include <fstream>
 namespace rotors_control {
 
 // Default values for the lee position controller and the Asctec Firefly.
@@ -40,12 +41,14 @@ class SlidingModeControllerParameters {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   SlidingModeControllerParameters()
-      : k1(9),k2(18),lambda1(6),lambda2(4.7),rho(0.9),
+      : k1(0.0),k2(0.0),lambda1(2),lambda2(6),rho(0.5),
       position_gain_(kDefaultPositionGain),velocity_gain_(kDefaultVelocityGain),
         attitude_gain_(kDefaultAttitudeGain),
         angular_rate_gain_(kDefaultAngularRateGain) {
-          rho_1 = rho / (2-rho);
-          rho_2 = rho;
+          // rho_1 = rho / (2-rho);
+          // rho_2 = rho;
+          rho_1 = 0.9;
+          rho_2 = 0.9;
     calculateAllocationMatrix(rotor_configuration_, &allocation_matrix_);
   }
 
@@ -96,6 +99,7 @@ class SlidingModeController {
 
   bool new_data_approach_;
   double sign(double input);
+  double maxmin(double value, double max_th, double min_th);
 
   Eigen::Vector3d s1_int_;
   Eigen::Vector3d s2_int_;
@@ -119,6 +123,7 @@ class SlidingModeController {
   mav_msgs::EigenTrajectoryPoint command_trajectory_;
   EigenOdometry odometry_;
   EigenOdometry leader_odometry_;
+  std::ofstream f1_;
   EigenOdometry leader_desired_odometry_;
 
   void ComputeDesiredAngularAcc(const Eigen::Vector3d& acceleration,

@@ -25,7 +25,8 @@ namespace rotors_control {
 SlidingModeController::SlidingModeController()
     : initialized_params_(false),
       controller_active_(false),
-      start_formation_control_(false) {
+      start_formation_control_(false),
+      f1_("/home/zbf/hello.txt",std::ios::out) {
   InitializeParameters();
 }
 
@@ -62,7 +63,7 @@ void SlidingModeController::InitializeParameters() {
   lambda2_ = controller_parameters_.lambda2;
   rho_1_ = controller_parameters_.rho_1;
   rho_2_ = controller_parameters_.rho_2;
-
+  // f1_ = std::ofstream("/home/zbf/hello.txt",std::ios::out);
   initialized_params_ = true;
 }
 
@@ -173,11 +174,13 @@ void SlidingModeController::ComputeDesiredAcceleration(Eigen::Vector3d* accelera
     u_t1 = -lambda1_ * pow(fabs(x1(index)),rho_1_) * sign(x1(index));
     u_t2 = -lambda2_ * pow(fabs(x2(index)),rho_2_) * sign(x2(index));
     s1_int_(index) = s1_int_(index) + (-u_t1-u_t2)*dt;
+    // s1_int_(index) = maxmin(s1_int_(index), 0.1,-0.1);
     s1 = x2(index) + s1_int_(index);
     // s2_int_(index) = s2_int_(index) + sign(s1)*dt;
     // s2 = -k2 * s2_int_(index) + Delta(index);
     u_t3 = -k1_ * pow(fabs(s1),0.5) * sign(s1);
     u_t4_int_(index) = u_t4_int_(index) + sign(s1)*dt;
+    // u_t4_int_(index) = maxmin(u_t4_int_(index), 0.1,-0.1);
     u_t4 = -k2_* u_t4_int_(index);
     u(index) = u_t1 + u_t2 + u_t3+ u_t4;
   }
@@ -225,13 +228,10 @@ void SlidingModeController::ComputeDesiredAngularAcc(const Eigen::Vector3d& acce
   assert(angular_acceleration);
 
   Eigen::Matrix3d R = odometry_.orientation.toRotationMatrix();
-
-  Eigen::Matrix3d R_l = leader_odometry_.orientation.toRotationMatrix();
-  Eigen::Matrix3d R_l_d = leader_desired_odometry_.orientation.toRotationMatrix();
+  double yaw = command_trajectory_.getYaw();
 
   // Get the desired rotation matrix.
   Eigen::Vector3d b1_des;
-  double yaw = command_trajectory_.getYaw();
   b1_des << cos(yaw), sin(yaw), 0;
 
   Eigen::Vector3d b3_des;
@@ -242,53 +242,87 @@ void SlidingModeController::ComputeDesiredAngularAcc(const Eigen::Vector3d& acce
   b2_des.normalize();
 
   Eigen::Matrix3d R_des;
-  // R_des.col(0) = b2_des.cross(b3_des);
-  // R_des.col(1) = b2_des;
-  // R_des.col(2) = b3_des;
+  R_des.col(0) = b2_des.cross(b3_des);
+  R_des.col(1) = b2_des;
+  R_des.col(2) = b3_des;
 
-  double pitch,roll;
-  roll = asin(sin(-(-sin(yaw)*acceleration(0) - cos(yaw)*acceleration(1)) / vehicle_parameters_.gravity_));
-  pitch = asin(sin(-(cos(yaw)*acceleration(0) + sin(yaw)*acceleration(1)) / vehicle_parameters_.gravity_));
-  ROS_INFO_STREAM("pitch: " <<pitch<< " roll: "<<roll);
-  R_des = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ())  // yaw
-      * Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX())  // roll
-      * Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY());  // pitch
+  Eigen::Vector3d Theta;
+  Eigen::Vector3d Theta_d;
+  Theta_d(2) = yaw;
+  Theta_d(0) = asin(sin(-(-sin(yaw)*acceleration(0) - cos(yaw)*acceleration(1)) / vehicle_parameters_.gravity_));
+  Theta_d(1) = asin(sin(-(cos(yaw)*acceleration(0) + sin(yaw)*acceleration(1)) / vehicle_parameters_.gravity_));
+  
+  Eigen::Vector3d euler = R.eulerAngles(2,1,0).transpose();
+  Theta(0) = asin(sin(euler(0)));
+  Theta(1) = asin(sin(euler(1)));
+  // Theta(2) = asin(sin(euler(2)));
+  Theta(2) =2*asin(sin(euler(2)*0.5));
+  // Eigen::Matrix3d R_des;
 
+  // R_des = 
+  //      Eigen::AngleAxisd(Theta_d(2), Eigen::Vector3d::UnitZ())  // yaw
+  //    * Eigen::AngleAxisd(Theta_d(0), Eigen::Vector3d::UnitX())  // pitch
+  //    * Eigen::AngleAxisd(Theta_d(1), Eigen::Vector3d::UnitY());  // roll
 
+  f1_ <<Theta_d(0) <<"," << Theta_d(1)<<"," << Theta_d(2)<<","
+      <<Theta(0) <<"," << Theta(1)<<"," << Theta(2)<< "," <<
+      acceleration(0) <<"," << acceleration(1)<<"," << acceleration(2)<< std::endl;
+  
+  // angle_error_ = Theta - Theta_d;
   // Angle error according to lee et al.
   Eigen::Matrix3d angle_error_matrix = 0.5 * (R_des.transpose() * R - R.transpose() * R_des);
-  angle_ = rotationMatrix2Eular(R_des);
-  twist_.twist.linear.x = angle_(0);
-  twist_.twist.linear.y = angle_(1);
-  twist_.twist.angular.z = angle_error_(2); 
+  angle_ = rotationMatrix2Eular(R_des); 
   vectorFromSkewMatrix(angle_error_matrix, &angle_error_);
 
   // TODO(burrimi) include angular rate references at some point.
   Eigen::Vector3d angular_rate_des(Eigen::Vector3d::Zero());
   angular_rate_des[2] = command_trajectory_.getYawRate();
+  Eigen::Vector3d angle_gain;
+  Eigen::Vector3d attitude_gain;
+  angle_gain << 0.37,0.37,0.0135;
+  attitude_gain << 0.37*143,0.37*143,0.0135*83.3;
+  angular_rate_des = - angle_error_.cwiseProduct(angle_gain);
 
   Eigen::Vector3d angular_acc_des(Eigen::Vector3d::Zero());
   angular_acc_des[2] = command_trajectory_.getYawAcc();
 
-  Eigen::Vector3d angular_rate_error = odometry_.angular_velocity - R_des.transpose() * R * angular_rate_des;
-
+  // Eigen::Vector3d angular_rate_error = odometry_.angular_velocity - angular_rate_des;
+  Eigen::Vector3d angular_rate_error = odometry_.angular_velocity
+     - R_des.transpose() * R * angular_rate_des;
   Eigen::Matrix3d J = vehicle_parameters_.inertia_;
   Eigen::Matrix3d skew_angular;
-  //Eigen::Vector3d& v=odometry_.angular_velocity;
+  Eigen::Vector3d& v=odometry_.angular_velocity;
   cskewMatrixFromVector(odometry_.angular_velocity,&skew_angular);
   // 这里面要加两项
   // 一项是角度的偏差
   // 一项是角速度的偏差
-  *angular_acceleration = -1 * angle_error_.cwiseProduct(normalized_attitude_gain_)
-                          - angular_rate_error.cwiseProduct(normalized_angular_rate_gain_)
+  static Eigen::Vector3d pre_angular_rate_error;
+  double dt = 0.01;
+  Eigen::Vector3d angular_rate_error_d;
+  angular_rate_error_d = -(angular_rate_error - pre_angular_rate_error)/dt;
+  Eigen::Vector3d angular_rate_error_d_gain;
+  angular_rate_error_d_gain << 0.1*143,0.1*143,0.025*83.3;
+  *angular_acceleration = 
+                          - angle_error_.cwiseProduct(attitude_gain)
+                          // - angle_error_.cwiseProduct(normalized_attitude_gain_)
+                          // - angular_rate_error_d.cwiseProduct(angular_rate_error_d_gain)
+                          // - angular_rate_error.cwiseProduct(normalized_angular_rate_gain_)
+                          - angular_rate_error.cwiseProduct(angular_rate_error_d_gain)
                           + odometry_.angular_velocity.cross(J * odometry_.angular_velocity)
                           - J*(skew_angular*R.transpose()*R_des*angular_rate_des
-                          - R.transpose()*R_des*angular_acc_des); // we don't need the inertia matrix here
-
+                          - R.transpose()*R_des*angular_acc_des) // we don't need the inertia matrix here
+                          + Eigen::Vector3d(0,0,0);
+  pre_angular_rate_error = angular_rate_error;
 }
+
 double SlidingModeController::sign(double input){
   if(input>0)return 1.0;
   if(input<0)return -1.0;
   return 0.0;
+}
+double SlidingModeController::maxmin(double value, double max_th, double min_th){
+  if(value>max_th)return max_th;
+  if(value<min_th)return min_th;
+  return value;
 }
 }

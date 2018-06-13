@@ -83,8 +83,6 @@ void RollPitchYawrateThrustController::CalculateRotorVelocities(Eigen::VectorXd*
   assert(rotor_velocities);
   assert(initialized_params_);
 
-  ROS_INFO_STREAM("accel : ");
-  ROS_INFO_STREAM("accel : ");
   rotor_velocities->resize(vehicle_parameters_.rotor_configuration_.rotors.size());
   // Return 0 velocities on all rotors, until the first command is received.
   if (!controller_active_) {
