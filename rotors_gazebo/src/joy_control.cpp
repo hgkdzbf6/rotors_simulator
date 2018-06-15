@@ -94,7 +94,7 @@ class JoyControl{
           ++i;
         }
       }
-      timer_=nh_.createTimer(ros::Duration(0.1),&JoyControl::TimerCallback,this);
+      timer_=nh_.createTimer(ros::Duration(0.01),&JoyControl::TimerCallback,this);
       if(!is_real_){
         if (!unpaused) {
           ROS_FATAL("Could not wake up Gazebo.");

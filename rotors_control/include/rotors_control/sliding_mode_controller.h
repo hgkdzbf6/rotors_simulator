@@ -41,14 +41,17 @@ class SlidingModeControllerParameters {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   SlidingModeControllerParameters()
-      : k1(0.0),k2(0.0),lambda1(2),lambda2(6),rho(0.5),
-      position_gain_(kDefaultPositionGain),velocity_gain_(kDefaultVelocityGain),
+      : k1(0),k2(0),lambda1(0.6),lambda2(4.7),rho(0.5),
+        k21(0),k22(0),lambda21(53),lambda22(14.3),rho2(0.9),
+      position_gain_(kDefaultPositionGain/8),velocity_gain_(kDefaultVelocityGain),
         attitude_gain_(kDefaultAttitudeGain),
         angular_rate_gain_(kDefaultAngularRateGain) {
           // rho_1 = rho / (2-rho);
           // rho_2 = rho;
-          rho_1 = 0.9;
-          rho_2 = 0.9;
+          rho_1 = 0.990;
+          rho_2 = 0.990;
+          rho2_1 = 0.99;
+          rho2_2 = 0.99;
     calculateAllocationMatrix(rotor_configuration_, &allocation_matrix_);
   }
 
@@ -59,6 +62,14 @@ class SlidingModeControllerParameters {
   double rho;
   double rho_1;
   double rho_2;
+
+  double k21;
+  double k22;
+  double lambda21;
+  double lambda22;
+  double rho2;
+  double rho2_1;
+  double rho2_2;
   Eigen::Matrix4Xd allocation_matrix_;
   Eigen::Vector3d position_gain_;
   Eigen::Vector3d velocity_gain_;
@@ -112,6 +123,17 @@ class SlidingModeController {
   double rho_1_;
   double rho_2_;
 
+  Eigen::VectorXd rotor_velocities_;
+  Eigen::Vector3d s21_int_;
+  Eigen::Vector3d s22_int_;
+  Eigen::Vector3d u2_t4_int_;
+  double k21_;
+  double k22_;
+  double lambda21_;
+  double lambda22_;
+  double rho2_1_;
+  double rho2_2_;
+
   geometry_msgs::TwistStamped twist_;
   geometry_msgs::TwistStamped twist_cmd_;
   Eigen::Vector3d normalized_attitude_gain_;
@@ -127,7 +149,8 @@ class SlidingModeController {
   EigenOdometry leader_desired_odometry_;
 
   void ComputeDesiredAngularAcc(const Eigen::Vector3d& acceleration,
-                                Eigen::Vector3d* angular_acceleration) ;
+                                Eigen::Vector3d* angular_acceleration,
+                                double* thrust) ;
   void ComputeDesiredAcceleration(Eigen::Vector3d* acceleration) ;
 };
 }
