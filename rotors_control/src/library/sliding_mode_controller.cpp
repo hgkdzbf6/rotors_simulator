@@ -176,13 +176,16 @@ void SlidingModeController::ComputeDesiredAcceleration(Eigen::Vector3d* accelera
   Eigen::Vector3d velocity_error;
   velocity_error = velocity_W - command_trajectory_.velocity_W;
 
+  // // 第一种滑模,金老板讲的第一种.
   // Eigen::Vector3d u;
-  // Eigen::Vector3d & x1 = position_error;
-  // Eigen::Vector3d & x2 = velocity_error;
+  Eigen::Vector3d & x1 = position_error;
+  Eigen::Vector3d & x2 = velocity_error;
   // double u_t1,u_t2,u_t3,u_t4;
   // double s1;
   // double dt = 0.01;
   // // 开始滑模控制
+  
+  
   // for(int index = 0;index<3;index++){
   //   u_t1 = -lambda1_ * pow(fabs(x1(index)),rho_1_) * sign(x1(index));
   //   u_t2 = -lambda2_ * pow(fabs(x2(index)),rho_2_) * sign(x2(index));
@@ -196,19 +199,24 @@ void SlidingModeController::ComputeDesiredAcceleration(Eigen::Vector3d* accelera
   //   // u_t4_int_(index) = maxmin(u_t4_int_(index), 0.1,-0.1);
   //   u_t4 = -k2_* u_t4_int_(index);
   //   u(index) = u_t1 + u_t2 + u_t3+ u_t4;
+  //   u(index) = -u(index);
+  //   if(u(index)>3) u(index)= 3;
+  //   if(u(index)<-3)u(index)=-3;
   // }
 
   // 开始另一种控制
+  // 参考论文: Sliding Mode Controller Design for UAV Based on Backstepping Control
+
   Eigen::Vector3d u;
   Eigen::Vector3d ds;
-  ds << 0.01,0.01,0.01;
+  ds << 0.1,0.1,0.01;
   double dt = 0.01;
   static Eigen::Vector3d pre_x2_c = Eigen::Vector3d::Zero();
   for(int index = 0 ; index < 3 ; index++){
     double x2_c;
     x2_c = -position_error(index)*controller_parameters_.position_gain_(index)+
       command_trajectory_.velocity_W(index);
-    u(index) = position_error(index) + 
+    u(index) = 5*position_error(index) + 
       controller_parameters_.velocity_gain_(index)*velocity_error(index)+
       ds(index) * sign(velocity_error(index)) -
       (x2_c - pre_x2_c(index)) /dt
@@ -216,24 +224,26 @@ void SlidingModeController::ComputeDesiredAcceleration(Eigen::Vector3d* accelera
       ;
     pre_x2_c(index) = x2_c; 
   }
+
+  // 原来的算法,就PID控制
   static Eigen::Vector3d acc;
   acc =  
-      ( position_error.cwiseProduct(controller_parameters_.position_gain_)
-      + velocity_error.cwiseProduct(controller_parameters_.velocity_gain_)
+      ( x1.cwiseProduct(controller_parameters_.position_gain_)
+      + x2.cwiseProduct(controller_parameters_.velocity_gain_)
       ) / vehicle_parameters_.mass_
       - vehicle_parameters_.gravity_ * e_3 - command_trajectory_.acceleration_W;
 
   // std::cout <<"here is always running" <<std::endl;
-  acc(0) = u(0);
-            // position_error(0) / vehicle_parameters_.mass_ *  controller_parameters_.position_gain_(0)+ 
-            // velocity_error(0) / vehicle_parameters_.mass_ * controller_parameters_.velocity_gain_(0);
-  acc(1) = u(1);
-            // position_error(1) / vehicle_parameters_.mass_ *  controller_parameters_.position_gain_(1)+ 
-            // velocity_error(1) / vehicle_parameters_.mass_ * controller_parameters_.velocity_gain_(1);
-  acc(2) = u(2)- vehicle_parameters_.gravity_;
-  // acc(2) = -vehicle_parameters_.gravity_ - u(2);
-            // position_error(2) / vehicle_parameters_.mass_ * controller_parameters_.position_gain_(2) + 
-            // velocity_error(2) / vehicle_parameters_.mass_ * controller_parameters_.velocity_gain_(2);
+  // acc(0) = u(0);
+  //           position_error(0) / vehicle_parameters_.mass_ *  controller_parameters_.position_gain_(0)+ 
+  //           velocity_error(0) / vehicle_parameters_.mass_ * controller_parameters_.velocity_gain_(0);
+  // acc(1) = u(1);
+  //           position_error(1) / vehicle_parameters_.mass_ *  controller_parameters_.position_gain_(1)+ 
+  //           velocity_error(1) / vehicle_parameters_.mass_ * controller_parameters_.velocity_gain_(1);
+  // acc(2) = u(2) - vehicle_parameters_.gravity_;
+  // acc(2) = -vehicle_parameters_.gravity_ +//- u(2);
+  //           position_error(2) / vehicle_parameters_.mass_ * controller_parameters_.position_gain_(2) + 
+  //           velocity_error(2) / vehicle_parameters_.mass_ * controller_parameters_.velocity_gain_(2);
   // double temp;
   // temp = u(0);
   // u(0) = -u(1);
@@ -464,8 +474,14 @@ void SlidingModeController::ComputeDesiredAngularAcc(const Eigen::Vector3d& acce
 }
 
 double SlidingModeController::sign(double input){
-  if(input>0)return 1.0;
-  if(input<0)return -1.0;
+  if(input>0){
+    if(input<0.01) return input;
+    return 1.0;
+  }
+  if(input<0){
+    if(input>-0.01) return input;
+    return -1.0;
+  }
   return 0.0;
 }
 double SlidingModeController::maxmin(double value, double max_th, double min_th){

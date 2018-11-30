@@ -32,8 +32,8 @@
 namespace rotors_control {
 
 // Default values for the lee position controller and the Asctec Firefly.
-static const Eigen::Vector3d kDefaultPositionGain = Eigen::Vector3d(6, 6, 6);
-static const Eigen::Vector3d kDefaultVelocityGain = Eigen::Vector3d(4.7, 4.7, 4.7);
+static const Eigen::Vector3d kDefaultPositionGain = Eigen::Vector3d(40, 40, 40);
+static const Eigen::Vector3d kDefaultVelocityGain = Eigen::Vector3d(1.7, 1.7, 1.7);
 static const Eigen::Vector3d kDefaultAttitudeGain = Eigen::Vector3d(3, 3, 0.035);
 static const Eigen::Vector3d kDefaultAngularRateGain = Eigen::Vector3d(0.52, 0.52, 0.025);
 
@@ -41,15 +41,16 @@ class SlidingModeControllerParameters {
  public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
   SlidingModeControllerParameters()
-      : k1(0),k2(0),lambda1(0.6),lambda2(4.7),rho(0.5),
+      : k1(0.01),k2(0.01),lambda1(0.6),lambda2(4.7),rho(0.5),
+      // : k1(0.2),k2(0.2),lambda1(1.6),lambda2(2.3),rho(0.5),
         k21(0),k22(0),lambda21(53),lambda22(14.3),rho2(0.9),
-      position_gain_(kDefaultPositionGain/8),velocity_gain_(kDefaultVelocityGain),
+      position_gain_(kDefaultPositionGain/8),velocity_gain_(kDefaultVelocityGain*0.9),
         attitude_gain_(kDefaultAttitudeGain),
         angular_rate_gain_(kDefaultAngularRateGain) {
           // rho_1 = rho / (2-rho);
           // rho_2 = rho;
-          rho_1 = 0.990;
-          rho_2 = 0.990;
+          rho_1 = 0.81;
+          rho_2 = 0.9;
           rho2_1 = 0.99;
           rho2_2 = 0.99;
     calculateAllocationMatrix(rotor_configuration_, &allocation_matrix_);

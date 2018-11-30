@@ -106,7 +106,7 @@ void RollPitchYawrateThrustController::CalculateRotorVelocities(Eigen::VectorXd*
   if(taking_off_){
 	  thrust=9;
   }
-  
+
   std::cout << thrust << std::endl;
   Eigen::Vector4d angular_acceleration_thrust;
   angular_acceleration_thrust.block<3, 1>(0, 0) = angular_acceleration;
