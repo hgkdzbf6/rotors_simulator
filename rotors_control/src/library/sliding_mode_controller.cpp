@@ -234,10 +234,10 @@ void SlidingModeController::ComputeDesiredAcceleration(Eigen::Vector3d* accelera
       - vehicle_parameters_.gravity_ * e_3 - command_trajectory_.acceleration_W;
 
   // std::cout <<"here is always running" <<std::endl;
-  // acc(0) = u(0);
+  acc(0) = u(0);
   //           position_error(0) / vehicle_parameters_.mass_ *  controller_parameters_.position_gain_(0)+ 
   //           velocity_error(0) / vehicle_parameters_.mass_ * controller_parameters_.velocity_gain_(0);
-  // acc(1) = u(1);
+  acc(1) = u(1);
   //           position_error(1) / vehicle_parameters_.mass_ *  controller_parameters_.position_gain_(1)+ 
   //           velocity_error(1) / vehicle_parameters_.mass_ * controller_parameters_.velocity_gain_(1);
   // acc(2) = u(2) - vehicle_parameters_.gravity_;
